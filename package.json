@@ -3,15 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-{
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "tsx watch server/_core/index.ts",
     "build": "vite build && tsc -p tsconfig.server.json",
     "start": "node dist/index.js"
-  }
-}
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
     "@aws-sdk/s3-request-presigner": "^3.693.0",
