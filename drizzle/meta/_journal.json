@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1765158209822,
+      "tag": "0000_condemned_chamber",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765158273421,
+      "tag": "0001_furry_hemingway",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1765182716471,
+      "tag": "0002_silky_rictor",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1765254506634,
+      "tag": "0003_military_jetstream",
+      "breakpoints": true
+    }
+  ]
+}

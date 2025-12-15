@@ -1,0 +1,1 @@
+ALTER TABLE `clients` MODIFY COLUMN `status` enum('New','WakalahRegistration','FilePreparation','FileSubmitted','Processing','Valuation','UnderReview','ObjectionSubmitted','PaymentPending','CheckIssued','Completed') NOT NULL DEFAULT 'New';
