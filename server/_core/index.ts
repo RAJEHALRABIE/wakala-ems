@@ -32,19 +32,19 @@ export async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Configure body parser with larger size limit for file uploads
+  // body parser
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // Serve uploaded files from /uploads
+  // uploads
   const uploadsDir = path.join(process.cwd(), "uploads");
   app.use("/uploads", express.static(uploadsDir));
   console.log("[Server] Serving uploads from:", uploadsDir);
 
-  // OAuth callback under /api/oauth/callback
+  // OAuth
   registerOAuthRoutes(app);
 
-  // tRPC API
+  // tRPC
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -53,7 +53,7 @@ export async function startServer() {
     })
   );
 
-  // Development mode uses Vite, production mode uses static files
+  // Vite / static
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -67,10 +67,8 @@ export async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  // Set server timeouts
-  // Maximum execution time of 5 minutes
+  // timeouts
   server.setTimeout(300000);
-  // Ensure headers are sent soon after timeout
   server.headersTimeout = 305000;
 
   server.listen(port, "0.0.0.0", () => {
