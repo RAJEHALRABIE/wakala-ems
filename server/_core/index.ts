@@ -1,20 +1,25 @@
 import "dotenv/config";
+
 import express from "express";
 import { createServer } from "http";
 import net from "net";
 import path from "path";
+
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const server = net.createServer();
+
     server.listen(port, () => {
       server.close(() => resolve(true));
     });
+
     server.on("error", () => resolve(false));
   });
 }
@@ -25,6 +30,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
       return port;
     }
   }
+
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
@@ -41,7 +47,7 @@ export async function startServer() {
   app.use("/uploads", express.static(uploadsDir));
   console.log("[Server] Serving uploads from:", uploadsDir);
 
-  // OAuth
+  // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
   // tRPC
@@ -50,10 +56,10 @@ export async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-    })
+    }),
   );
 
-  // Vite / static
+  // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
