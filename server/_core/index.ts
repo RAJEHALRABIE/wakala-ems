@@ -41,6 +41,11 @@ export async function startServer(): Promise<void> {
   
   registerOAuthRoutes(app);
   
+  // Health check for Railway
+  app.get("/health", (_req, res) => {
+    res.status(200).send("OK");
+  });
+  
   app.use(
     "/api/trpc",
     createExpressMiddleware({
