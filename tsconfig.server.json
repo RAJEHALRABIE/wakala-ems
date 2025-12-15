@@ -2,14 +2,21 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "./dist",
-    "rootDir": "./server",
+    "outDir": "./dist/server",
+    "rootDir": ".",
     "module": "ESNext",
     "target": "ES2020",
     "moduleResolution": "node",
     "allowImportingTsExtensions": false,
     "jsx": "react"
   },
-  "include": ["server/**/*", "shared/**/*"],
-  "exclude": ["node_modules", "dist", "client"]
+  "include": [
+    "server/**/*",
+    "shared/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "client"
+  ]
 }
