@@ -31,17 +31,19 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 export async function startServer() {
   const app = express();
   const server = createServer(app);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  
+
   // Serve uploaded files from /uploads
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
-  console.log('[Server] Serving uploads from:', uploadsDir);
-  
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  app.use("/uploads", express.static(uploadsDir));
+  console.log("[Server] Serving uploads from:", uploadsDir);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -50,14 +52,15 @@ export async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
+
+  // Development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
+  const preferredPort = parseInt(process.env.PORT || "3000", 10);
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
@@ -66,11 +69,11 @@ export async function startServer() {
 
   // Set server timeouts
   // Maximum execution time of 5 minutes
-  server.setTimeout(300000); 
+  server.setTimeout(300000);
   // Ensure headers are sent soon after timeout
   server.headersTimeout = 305000;
 
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on http://0.0.0.0:${port}/`);
-});
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
+  });
 }
