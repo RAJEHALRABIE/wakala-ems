@@ -24,7 +24,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "types": [
       "node",
