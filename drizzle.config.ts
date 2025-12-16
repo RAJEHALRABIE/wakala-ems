@@ -1,14 +1,15 @@
 import type { Config } from "drizzle-kit";
+import * as dotenv from "dotenv";
+
+// تحميل المتغيرات البيئية (للاستخدام المحلي)
+dotenv.config();
 
 export default {
   schema: "./drizzle/schema.ts",
   out: "./drizzle/migrations",
   dialect: "mysql",
-  tablesFilter: ["clients"],
   dbCredentials: {
-    host: "localhost",
-    port: 3306,
-    user: "root",
-    database: "wakala_ems",
+    // التغيير الحاسم: استخدام المتغير البيئي بدلاً من الثوابت
+    url: process.env.DATABASE_URL!,
   },
 } satisfies Config;
