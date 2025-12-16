@@ -1,3 +1,3 @@
-import { startServer } from "./_core/index.js";
+import { startServer } from "./_core/index";
 
 startServer();
