@@ -1,6 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
+import { systemRouter } from "./routers/system.router";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
@@ -28,16 +28,13 @@ try {
 }
 
 // Safe date parser that avoids timezone issues
-// When parsing "YYYY-MM-DD", new Date() interprets it as UTC midnight
-// which can shift to the previous day in some timezones
-// This function parses as local noon to avoid the issue
 function parseLocalDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day, 12, 0, 0);
 }
 
 // Create Zod enum from CLIENT_STATUSES
-const statusEnum = z.enum(CLIENT_STATUSES as unknown as [string, ...string[]]);
+const statusEnum = z.enum(CLIENT_STATUSES as [string, ...string[]]);
 
 // Property Document Types
 const propertyDocTypeEnum = z.enum(["Deed", "Ihkam", "Revivals", "Other"]);
@@ -163,8 +160,8 @@ export const appRouter = router({
         if (mapUrl) {
           const coords = extractCoordinates(mapUrl);
           if (coords) {
-            data.latitude = coords.latitude.toString();
-            data.longitude = coords.longitude.toString();
+            data.latitude = coords.latitude;
+            data.longitude = coords.longitude;
           }
         }
         
@@ -214,13 +211,12 @@ export const appRouter = router({
         if (data.agencyDate) updateData.agencyDate = parseLocalDate(data.agencyDate);
         if (data.requestDate) updateData.requestDate = parseLocalDate(data.requestDate);
         
-        // Extract coordinates from mapLink or surveyMapRef
         const mapUrl = data.mapLink || data.surveyMapRef;
         if (mapUrl) {
           const coords = extractCoordinates(mapUrl);
           if (coords) {
-            updateData.latitude = coords.latitude.toString();
-            updateData.longitude = coords.longitude.toString();
+            updateData.latitude = coords.latitude;
+            updateData.longitude = coords.longitude;
           }
         }
         
@@ -255,13 +251,7 @@ export const appRouter = router({
       const update = await db.getSetting("whatsapp_template_update");
       const missing = await db.getSetting("whatsapp_template_missing");
       const agent = await db.getSetting("whatsapp_template_agent");
-      return {
-        request: request || "مرحباً {اسم_العميل}،\n\nتم تسجيل ملفك برقم: {رمز_الملف}\n\n━━━━━━━━━━━━━━━━\n*قم بتجهيز الوكالة:*\n\n*بيانات الوكيل:*\nالاسم: {اسم_الوكيل}\nرقم الهوية: {سجل_الوكيل}\nتاريخ الميلاد: {تاريخ_ميلاد_الوكيل}\n\n━━━━━━━━━━━━━━━━\n*النطاق:*\n\n• الاستلام: التسليم\n\n• مراجعة جميع الجهات ذات العلاقة وإتمام جميع الإجراءات اللازمة والتوقيع فيما يتطلب ذلك\n\n• يحق للوكيل توكيل الغير\n\n━━━━━━━━━━━━━━━━\n*البنود:*\n\n*الوزارات الحكومية*\n• مراجعة وزارة الطاقة\n• مراجعة وزارة المالية\n\n*الشركات والمؤسسات الأهلية*\n• مراجعة وزارة الطاقة بخصوص نزع الملكية\n\n━━━━━━━━━━━━━━━━\nيمكنكم تتبع طلبكم وتحديثاته على الرابط التالي:\nhttps://wakala-ems.com/track",
-        welcome: welcome || "مرحباً {اسم_العميل}،\n\nتم تسجيل الوكالة بنجاح.\n\n*رقم الوكالة:* {رقم_الوكالة}\n*تاريخ الوكالة:* {تاريخ_الوكالة}\n\n━━━━━━━━━━━━━━━━\n*نرجو التكرم بإرسال المستندات التالية:*\n\n١. صورة واضحة من صك الملكية.\n\n٢. صورة من الهوية الوطنية للمالك.\n\n٣. صورة واضحة من الوكالة الشرعية سارية المفعول.\n\n٤. صورة من الهوية الوطنية للوكيل.\n\n٥. الرفع المساحي للعقار (يشمل الاحداثيات).\n\n٦. صورة واضحة من حصر الورثة.\n\n━━━━━━━━━━━━━━━━\nيمكنكم تتبع طلبكم وتحديثاته على الرابط التالي:\nhttps://wakala-ems.com/track",
-        update: update || "مرحباً {اسم_العميل}،\n\nتم تحديث حالة ملفك إلى: *{الحالة}*\n\n━━━━━━━━━━━━━━━━\nيمكنكم تتبع طلبكم وتحديثاته على الرابط التالي:\nhttps://wakala-ems.com/track",
-        missing: missing || "مرحباً {اسم_العميل}،\n\nنحتاج منك المستندات التالية:\n{المستندات_الناقصة}\n\n━━━━━━━━━━━━━━━━\nيمكنكم تتبع طلبكم وتحديثاته على الرابط التالي:\nhttps://wakala-ems.com/track",
-        agent: agent || "مرحباً {اسم_الوكيل}،\nرقم الهوية: {رقم_الهوية}\nتاريخ الميلاد: {تاريخ_الميلاد}\nالهاتف: {هاتف_الوكيل}",
-      };
+      return { request, welcome, update, missing, agent };
     }),
     setWhatsAppTemplate: publicProcedure
       .input(z.object({
@@ -325,40 +315,20 @@ export const appRouter = router({
         endDate: z.string(),
       }))
       .query(async ({ input }) => {
-        if (!analyticsClient) {
-          return [];
-        }
-
-        try {
-          const [response] = await analyticsClient.runReport({
-            property: `properties/${GA4_PROPERTY_ID}`,
-            dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
-            dimensions: [
-              { name: 'customEvent:agent_name' },
-              { name: 'customEvent:contact_method' },
-            ],
-            metrics: [{ name: 'eventCount' }],
-            dimensionFilter: {
-              filter: {
-                fieldName: 'eventName',
-                stringFilter: {
-                  matchType: 'EXACT' as const,
-                  value: 'select_agent'
-                }
-              }
-            },
-            limit: 100,
-          });
-
-          return response.rows?.map(row => ({
-            agentName: row.dimensionValues?.[0]?.value || 'Unknown',
-            contactMethod: row.dimensionValues?.[1]?.value || 'Unknown',
-            clicks: parseInt(row.metricValues?.[0]?.value || '0', 10),
-          })) || [];
-        } catch (error) {
-          console.error('GA4 API Error:', error);
-          return [];
-        }
+        if (!analyticsClient) return [];
+        const [response] = await analyticsClient.runReport({
+          property: `properties/${GA4_PROPERTY_ID}`,
+          dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
+          dimensions: [{ name: 'customEvent:agent_name' }, { name: 'customEvent:contact_method' }],
+          metrics: [{ name: 'eventCount' }],
+          dimensionFilter: { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'select_agent' } } },
+          limit: 100,
+        });
+        return response.rows?.map(row => ({
+          agentName: row.dimensionValues?.[0]?.value || 'Unknown',
+          contactMethod: row.dimensionValues?.[1]?.value || 'Unknown',
+          clicks: parseInt(row.metricValues?.[0]?.value || '0', 10),
+        })) || [];
       }),
 
     getKPIs: publicProcedure
@@ -367,43 +337,19 @@ export const appRouter = router({
         endDate: z.string(),
       }))
       .query(async ({ input }) => {
-        if (!analyticsClient) {
-          return { sessions: 0, totalUsers: 0, newUsers: 0, returningUsers: 0, pageViews: 0 };
-        }
-
-        try {
-          const [response] = await analyticsClient.runReport({
-            property: `properties/${GA4_PROPERTY_ID}`,
-            dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
-            metrics: [
-              { name: 'sessions' },
-              { name: 'totalUsers' },
-              { name: 'newUsers' },
-              { name: 'screenPageViews' },
-            ],
-          });
-
-          const row = response.rows?.[0];
-          if (!row) {
-            return { sessions: 0, totalUsers: 0, newUsers: 0, returningUsers: 0, pageViews: 0 };
-          }
-
-          const sessions = parseInt(row.metricValues?.[0]?.value || '0', 10);
-          const totalUsers = parseInt(row.metricValues?.[1]?.value || '0', 10);
-          const newUsers = parseInt(row.metricValues?.[2]?.value || '0', 10);
-          const pageViews = parseInt(row.metricValues?.[3]?.value || '0', 10);
-
-          return {
-            sessions,
-            totalUsers,
-            newUsers,
-            returningUsers: totalUsers - newUsers,
-            pageViews,
-          };
-        } catch (error) {
-          console.error('GA4 API Error:', error);
-          return { sessions: 0, totalUsers: 0, newUsers: 0, returningUsers: 0, pageViews: 0 };
-        }
+        if (!analyticsClient) return { sessions: 0, totalUsers: 0, newUsers: 0, returningUsers: 0, pageViews: 0 };
+        const [response] = await analyticsClient.runReport({
+          property: `properties/${GA4_PROPERTY_ID}`,
+          dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
+          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'screenPageViews' }],
+        });
+        const row = response.rows?.[0];
+        if (!row) return { sessions: 0, totalUsers: 0, newUsers: 0, returningUsers: 0, pageViews: 0 };
+        const sessions = parseInt(row.metricValues?.[0]?.value || '0', 10);
+        const totalUsers = parseInt(row.metricValues?.[1]?.value || '0', 10);
+        const newUsers = parseInt(row.metricValues?.[2]?.value || '0', 10);
+        const pageViews = parseInt(row.metricValues?.[3]?.value || '0', 10);
+        return { sessions, totalUsers, newUsers, returningUsers: totalUsers - newUsers, pageViews };
       }),
 
     getSessionsOverTime: publicProcedure
@@ -412,31 +358,19 @@ export const appRouter = router({
         endDate: z.string(),
       }))
       .query(async ({ input }) => {
-        if (!analyticsClient) {
-          return [];
-        }
-
-        try {
-          const [response] = await analyticsClient.runReport({
-            property: `properties/${GA4_PROPERTY_ID}`,
-            dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
-            dimensions: [{ name: 'date' }],
-            metrics: [
-              { name: 'sessions' },
-              { name: 'totalUsers' },
-            ],
-            orderBys: [{ dimension: { dimensionName: 'date' } }],
-          });
-
-          return response.rows?.map(row => ({
-            date: row.dimensionValues?.[0]?.value || '',
-            sessions: parseInt(row.metricValues?.[0]?.value || '0', 10),
-            users: parseInt(row.metricValues?.[1]?.value || '0', 10),
-          })) || [];
-        } catch (error) {
-          console.error('GA4 API Error:', error);
-          return [];
-        }
+        if (!analyticsClient) return [];
+        const [response] = await analyticsClient.runReport({
+          property: `properties/${GA4_PROPERTY_ID}`,
+          dateRanges: [{ startDate: input.startDate, endDate: input.endDate }],
+          dimensions: [{ name: 'date' }],
+          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+          orderBys: [{ dimension: { dimensionName: 'date' } }],
+        });
+        return response.rows?.map(row => ({
+          date: row.dimensionValues?.[0]?.value || '',
+          sessions: parseInt(row.metricValues?.[0]?.value || '0', 10),
+          users: parseInt(row.metricValues?.[1]?.value || '0', 10),
+        })) || [];
       }),
   }),
 });

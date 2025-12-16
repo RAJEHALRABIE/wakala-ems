@@ -53,7 +53,7 @@ function sanitizeFileName(fileName: string): string {
 
 async function localStoragePut(
   relKey: string,
-  data: Buffer | Uint8Array | string
+  buffer: Buffer
 ): Promise<{ key: string; url: string }> {
   ensureUploadDir();
   
@@ -74,10 +74,6 @@ async function localStoragePut(
   }
   
   const filePath = path.join(targetDir, uniqueName);
-  
-  const buffer = typeof data === 'string' 
-    ? Buffer.from(data) 
-    : Buffer.from(data);
   
   fs.writeFileSync(filePath, buffer);
   
@@ -225,10 +221,14 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
+  const buffer = typeof data === 'string'
+    ? Buffer.from(data)
+    : Buffer.from(data);
+
   if (USE_CLOUD_STORAGE) {
-    return cloudStoragePut(relKey, data, contentType);
+    return cloudStoragePut(relKey, buffer, contentType);
   }
-  return localStoragePut(relKey, data);
+  return localStoragePut(relKey, buffer);
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
