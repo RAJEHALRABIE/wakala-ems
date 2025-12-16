@@ -33,6 +33,7 @@ export default defineConfig({
         chunkFileNames: "server/[name]-[hash].js",
         assetFileNames: "server/[name]-[hash][extname]",
       },
+      external: ["@paralleldrive/cuid2"],
     },
   },
   server: {
