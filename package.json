@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outfile=dist/server/index.js",
+    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --resolve-extensions=.ts,.tsx --external:express --external:dotenv --external:@google-analytics/data --external:sqlstring --external:superjson --outfile=dist/server/index.js",
     "start": "node dist/server/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
