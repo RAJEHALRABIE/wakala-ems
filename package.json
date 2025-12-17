@@ -61,6 +61,7 @@
     "dotenv": "^17.2.2",
     "drizzle-orm": "0.45.1",
     "embla-carousel-react": "^8.6.0",
+    "enhanced-resolve": "^5.18.4",
     "express": "^4.21.2",
     "framer-motion": "^12.23.22",
     "hijri-converter": "^1.1.1",

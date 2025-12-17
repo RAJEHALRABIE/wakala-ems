@@ -157,6 +157,9 @@ importers:
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.3)
+      enhanced-resolve:
+        specifier: ^5.18.4
+        version: 5.18.4
       express:
         specifier: ^4.21.2
         version: 4.22.1
