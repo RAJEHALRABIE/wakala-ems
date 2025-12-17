@@ -25,15 +25,7 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        server: path.resolve(import.meta.dirname, "server/index.ts"),
-      },
-      output: {
-        entryFileNames: "server/[name].js",
-        chunkFileNames: "server/[name]-[hash].js",
-        assetFileNames: "server/[name]-[hash][extname]",
-      },
-      external: ["@paralleldrive/cuid2", "./routers/system.router"],
+      external: ["@paralleldrive/cuid2"],
     },
   },
   server: {
