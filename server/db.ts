@@ -129,3 +129,19 @@ export const getDocumentsByClient = (clientId: number) => db.query.documents.fin
 export const createDocument = (data: schema.InsertDocument) => db.insert(schema.documents).values(data);
 export const updateDocument = (id: number, data: Partial<schema.InsertDocument>) => db.update(schema.documents).set(data).where(eq(schema.documents.id, id));
 export const deleteDocument = (id: number) => db.delete(schema.documents).where(eq(schema.documents.id, id));
+
+// =================================================================
+// USERS
+// =================================================================
+export const getUserByOpenId = (openId: string) => db.query.users.findFirst({ where: eq(schema.users.openId, openId) });
+
+export const upsertUser = (data: schema.InsertUser) => db.insert(schema.users)
+  .values(data)
+  .onDuplicateKeyUpdate({
+    set: {
+      name: data.name,
+      email: data.email,
+      loginMethod: data.loginMethod,
+      lastSignedIn: data.lastSignedIn
+    }
+  });
