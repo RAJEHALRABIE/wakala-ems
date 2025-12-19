@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Users, MapPin, DollarSign, CheckCircle, BarChart3 } from "lucide-react";
+import { Users, MapPin, DollarSign, FileText, BarChart3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CLIENT_STATUSES, STATUS_LABELS, STATUS_COLORS } from "@shared/statuses";
+import { formatNumber, formatCurrency, formatArea } from "@shared/formatting";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
@@ -20,109 +21,119 @@ export default function Dashboard() {
     );
   }
 
-  const formatNumber = (num: number) => num.toLocaleString("ar-SA");
-  const formatCurrency = (num: number) => `${formatNumber(num)}`;
-
-  // Calculate max for chart
-  const maxStatusCount = Math.max(...Object.values(stats?.byStatus || { default: 1 }), 1);
+  // إجمالي عدد الملفات (نفس إجمالي العملاء)
+  const totalFiles = stats?.total || 0;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold">لوحة التحكم</h1>
-      
-      {/* Main Stats - 2 Columns Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* إجمالي العملاء */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <Users className="h-4 w-4 text-blue-500" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-right">لوحة التحكم</h1>
+        
+        {/* البطاقات الأربع - Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* بطاقة 1: إجمالي العملاء */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4 text-right">
+              <div className="flex items-center justify-end gap-3 mb-3">
+                <span className="text-sm text-muted-foreground flex-1">إجمالي العملاء</span>
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-5 w-5 text-blue-500" />
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground">إجمالي العملاء</span>
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{formatNumber(stats?.total || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">عميل</div>
-          </CardContent>
-        </Card>
+              <div className="text-2xl md:text-3xl font-bold text-blue-600 whitespace-nowrap">
+                {formatNumber(stats?.total || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* إجمالي المساحة */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                <MapPin className="h-4 w-4 text-emerald-500" />
+          {/* بطاقة 2: إجمالي المساحة */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4 text-right">
+              <div className="flex items-center justify-end gap-3 mb-3">
+                <span className="text-sm text-muted-foreground flex-1">إجمالي المساحة</span>
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-emerald-500" />
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground">إجمالي المساحة</span>
-            </div>
-            <div className="text-2xl font-bold text-emerald-600">{formatNumber(stats?.totalArea || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">م²</div>
-          </CardContent>
-        </Card>
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600 whitespace-nowrap">
+                {formatArea(stats?.totalArea || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* إجمالي التعويضات */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-4 w-4 text-green-500" />
+          {/* بطاقة 3: إجمالي التعويضات المتوقعة */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4 text-right">
+              <div className="flex items-center justify-end gap-3 mb-3">
+                <span className="text-sm text-muted-foreground flex-1">إجمالي التعويضات المتوقَّعة</span>
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground">إجمالي التعويضات</span>
-            </div>
-            <div className="text-xl font-bold text-green-600">{formatCurrency(stats?.totalCompensation || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">ريال</div>
-          </CardContent>
-        </Card>
+              <div className="text-xl md:text-2xl font-bold text-green-600 whitespace-nowrap">
+                {formatCurrency(stats?.totalCompensation || 0)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-2 text-right">
+                القيمة تقديرية قبل الصرف الفعلي وقد تتغير بعد استكمال الإجراءات
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* الملفات المكتملة */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="h-4 w-4 text-amber-500" />
+          {/* بطاقة 4: عدد الملفات بالنظام */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4 text-right">
+              <div className="flex items-center justify-end gap-3 mb-3">
+                <span className="text-sm text-muted-foreground flex-1">عدد الملفات بالنظام</span>
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-amber-500" />
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground">الملفات المكتملة</span>
+              <div className="text-2xl md:text-3xl font-bold text-amber-600 whitespace-nowrap">
+                {formatNumber(totalFiles)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* قسم توزيع الحالات */}
+        <Card className="text-right">
+          <CardHeader className="pb-3 pr-4">
+            <CardTitle className="text-lg text-right pr-2">
+              توزيع الحالات
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pr-4">
+            <div className="space-y-4">
+              {CLIENT_STATUSES.map((status: string) => {
+                const count = stats?.byStatus?.[status] || 0;
+                const percentage = totalFiles > 0 ? (count / totalFiles) * 100 : 0;
+                
+                // إعداد نص الحالة باللغة العربية
+                const statusLabel = STATUS_LABELS[status];
+                const fileText = count === 1 ? "ملف" : "ملفات";
+                
+                return (
+                  <div key={status} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium text-gray-700">
+                        {statusLabel} – {count} {fileText}
+                      </div>
+                    </div>
+                    <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute top-0 right-0 h-full bg-blue-400 transition-all duration-500"
+                        style={{ 
+                          width: `${percentage}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="text-2xl font-bold text-amber-600">{formatNumber(stats?.byStatus?.Completed || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">ملف</div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Status Breakdown - Bar Chart Style */}
-      <Card>
-        <CardHeader className="pb-2 px-3 pt-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            توزيع الحالات
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <div className="space-y-2">
-            {CLIENT_STATUSES.map((status) => {
-              const count = stats?.byStatus?.[status] || 0;
-              const percentage = maxStatusCount > 0 ? (count / maxStatusCount) * 100 : 0;
-              return (
-                <div key={status} className="flex items-center gap-2">
-                  <div className="w-24 text-xs text-muted-foreground truncate">{STATUS_LABELS[status]}</div>
-                  <div className="flex-1 h-5 bg-muted/50 rounded overflow-hidden relative">
-                    <div 
-                      className="h-full rounded transition-all duration-500"
-                      style={{ 
-                        width: `${percentage}%`,
-                        backgroundColor: STATUS_COLORS[status]
-                      }}
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                      {count > 0 && count}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

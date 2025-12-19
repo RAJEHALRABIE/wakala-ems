@@ -170,7 +170,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="lg:pr-64">
-        <div className="container py-6 max-w-6xl">
+        <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>

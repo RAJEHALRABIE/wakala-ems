@@ -18,6 +18,8 @@ import { extractCoordinates, formatCoordinates } from "@shared/coordinates";
 import { STANDARD_DOCUMENTS } from "@shared/documents";
 import { calculateFinancials } from "@shared/financials";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { normalizeDigits, formatCurrency, formatNumber, formatPercentage, formatArea, formatPricePerUnit } from "@shared/formatting";
+import { Amount, Percentage, Area, PricePerUnit, Number as NumberComponent, NumericInput, DigitNormalizer } from "@/components/ui/formatting";
 
 // تعريف القوائم والثوابت
 const PROPERTY_DOC_TYPES = [
@@ -104,7 +106,7 @@ export default function ClientForm() {
     return num.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }) + " ر.س";
+    }) + " ريال";
   };
 
   const handleMapPositionSelect = (lat: number, lng: number) => {
@@ -359,7 +361,8 @@ export default function ClientForm() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="space-y-6 pb-12">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
           <ArrowRight className="h-5 w-5" />
@@ -558,6 +561,7 @@ export default function ClientForm() {
           </Button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

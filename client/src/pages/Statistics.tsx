@@ -12,13 +12,11 @@ import {
   Wallet
 } from "lucide-react";
 import { CLIENT_STATUSES, STATUS_LABELS, STATUS_COLORS } from "@shared/statuses";
+import { formatNumber, formatCurrency, formatArea } from "@shared/formatting";
 
 export default function Statistics() {
   const { data: clients, isLoading } = trpc.clients.list.useQuery();
   const { data: stats } = trpc.dashboard.stats.useQuery();
-
-  const formatNumber = (num: number | null) => num ? num.toLocaleString("ar-SA") : "0";
-  const formatCurrency = (num: number | null) => num ? `${formatNumber(num)}` : "0";
 
   // Calculate statistics
   const avgCompensation = clients?.length 
@@ -97,8 +95,8 @@ export default function Statistics() {
               </div>
               <span className="text-xs text-muted-foreground">إجمالي المساحات</span>
             </div>
-            <div className="text-2xl font-bold text-emerald-600">{formatNumber(stats?.totalArea || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">م² • متوسط {formatNumber(avgArea)} م²</div>
+            <div className="text-2xl font-bold text-emerald-600">{formatArea(stats?.totalArea || 0)}</div>
+            <div className="text-[10px] text-muted-foreground">متوسط {formatArea(avgArea)}</div>
           </CardContent>
         </Card>
 
@@ -112,7 +110,6 @@ export default function Statistics() {
               <span className="text-xs text-muted-foreground">إجمالي التعويضات</span>
             </div>
             <div className="text-xl font-bold text-green-600">{formatCurrency(stats?.totalCompensation || 0)}</div>
-            <div className="text-[10px] text-muted-foreground">ريال</div>
           </CardContent>
         </Card>
 
@@ -140,7 +137,6 @@ export default function Statistics() {
               <span className="text-xs text-muted-foreground">إجمالي العمولات</span>
             </div>
             <div className="text-xl font-bold text-purple-600">{formatCurrency(totalCommission)}</div>
-            <div className="text-[10px] text-muted-foreground">ريال متوقع</div>
           </CardContent>
         </Card>
       </div>
@@ -227,15 +223,13 @@ export default function Statistics() {
           <CardContent className="p-3 text-center">
             <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">متوسط التعويض</div>
             <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(avgCompensation)}</div>
-            <div className="text-[10px] text-blue-500">ريال / عميل</div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200">
           <CardContent className="p-3 text-center">
             <div className="text-xs text-green-600 dark:text-green-400 mb-1">متوسط المساحة</div>
-            <div className="text-lg font-bold text-green-700 dark:text-green-300">{formatNumber(avgArea)}</div>
-            <div className="text-[10px] text-green-500">م² / عميل</div>
+            <div className="text-lg font-bold text-green-700 dark:text-green-300">{formatArea(avgArea)}</div>
           </CardContent>
         </Card>
       </div>

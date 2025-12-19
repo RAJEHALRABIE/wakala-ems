@@ -21,6 +21,7 @@ import {
 import { CLIENT_STATUSES, STATUS_LABELS, getStatusBadgeClasses, ClientStatus } from "@shared/statuses";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
+import { formatNumber, formatCurrency, formatArea, formatPricePerUnit } from "@shared/formatting";
 
 // أيقونات الحالات
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -146,8 +147,8 @@ export default function ClientList() {
     };
   }, [clients]);
 
-  const formatNumber = (num: number | null) => num ? num.toLocaleString("ar-SA") : "-";
-  const formatCurrency = (num: number | null) => num ? `${num.toLocaleString("ar-SA")} ريال` : "-";
+  const formatNumber = (num: number | null) => num ? num.toLocaleString("en-US") : "-";
+  const formatCurrency = (num: number | null) => num ? `${num.toLocaleString("en-US")} ريال` : "-";
 
   // نسخ رقم الهاتف
   const copyPhone = (phone: string) => {
@@ -580,7 +581,8 @@ const calculateFinancials = (client: any) => {
   );
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="space-y-6 pb-8">
       {/* العنوان وزر الإضافة */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
         <div>
@@ -809,6 +811,7 @@ const calculateFinancials = (client: any) => {
           </span>
         </div>
       )}
+      </div>
     </div>
   );
 }

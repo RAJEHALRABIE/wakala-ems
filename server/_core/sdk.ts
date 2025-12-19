@@ -297,7 +297,8 @@ class SDKServer {
       lastSignedIn: signedInAt,
     });
 
-    return user;
+    // Type assertion to fix role type mismatch
+    return user as User;
   }
 }
 

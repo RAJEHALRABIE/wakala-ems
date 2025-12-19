@@ -16,6 +16,7 @@ import { DateDisplay } from "@/components/DateDisplay";
 import { STANDARD_DOCUMENTS } from "@shared/documents";
 import { calculateFinancials } from "@shared/financials";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatNumber, formatCurrency, formatArea, formatPercentage } from "@shared/formatting";
 
 export default function ClientDetails() {
   const params = useParams<{ id: string }>();
@@ -38,10 +39,6 @@ export default function ClientDetails() {
     },
     onError: (error) => toast.error(error.message),
   });
-
-  // دالة تنسيق الأرقام الموحدة (أرقام إنجليزية + نص عربي)
-  const formatNumber = (num: number | null) => num ? num.toLocaleString("en-US") : "-";
-  const formatCurrency = (num: number | null) => num ? `${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ر.س` : "-";
 
   const generateWhatsAppMessage = (type: "request" | "welcome" | "update" | "missing") => {
     if (!client || !templates) return "";
@@ -407,13 +404,13 @@ export default function ClientDetails() {
                   <>
                     <div>
                       <dt className="text-sm text-muted-foreground">إجمالي المساحة</dt>
-                      <dd className="text-lg font-bold" dir="ltr">{formatNumber(parseFloat(client.areaSqm || "0"))} م²</dd>
+                      <dd className="text-lg font-bold" dir="ltr">{formatArea(parseFloat(client.areaSqm || "0"))}</dd>
                     </div>
 
                     {client.expropriationType === 'PARTIAL' && (
                       <div>
                         <dt className="text-sm text-muted-foreground">المساحة المنزوعة</dt>
-                        <dd className="text-lg font-bold text-destructive" dir="ltr">{formatNumber(parseFloat(client.expropriatedArea || "0"))} م²</dd>
+                        <dd className="text-lg font-bold text-destructive" dir="ltr">{formatArea(parseFloat(client.expropriatedArea || "0"))}</dd>
                       </div>
                     )}
 
@@ -426,7 +423,7 @@ export default function ClientDetails() {
                 
                 <div>
                   <dt className="text-sm text-muted-foreground">نسبة الاستحقاق</dt>
-                  <dd className="text-lg font-bold" dir="ltr">{(parseFloat(client.possessionRatio || "1") * 100).toFixed(0)}%</dd>
+                  <dd className="text-lg font-bold" dir="ltr">{formatPercentage(parseFloat(client.possessionRatio || "1") * 100)}</dd>
                 </div>
 
                 {client.expropriationType === 'IMPROVEMENTS_ONLY' && (
@@ -440,7 +437,7 @@ export default function ClientDetails() {
                   <dt className="text-sm text-muted-foreground">إجمالي التعويض المتوقع</dt>
                   <dd className="text-3xl font-bold text-primary" dir="ltr">{formatCurrency(expectedCompensation)}</dd>
                   <p className="text-xs text-muted-foreground">
-                    المعادلة: (المساحة * السعر * النسبة) + قيمة الإحياءات
+                    المعادلة: (المساحة × السعر × النسبة) + قيمة الإحياءات
                   </p>
                 </div>
 

@@ -154,7 +154,7 @@ export default function Analytics() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{kpis?.sessions.toLocaleString('ar-SA')}</div>
+                <div className="text-2xl font-bold">{kpis?.sessions.toLocaleString('en-US')}</div>
                 <p className="text-xs text-muted-foreground">جلسات المستخدمين</p>
               </>
             )}
@@ -171,7 +171,7 @@ export default function Analytics() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{kpis?.totalUsers.toLocaleString('ar-SA')}</div>
+                <div className="text-2xl font-bold">{kpis?.totalUsers.toLocaleString('en-US')}</div>
                 <p className="text-xs text-muted-foreground">
                   جدد: {kpis?.newUsers} | عائدون: {kpis?.returningUsers}
                 </p>
@@ -190,7 +190,7 @@ export default function Analytics() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalAgentClicks.toLocaleString('ar-SA')}</div>
+                <div className="text-2xl font-bold">{totalAgentClicks.toLocaleString('en-US')}</div>
                 <p className="text-xs text-muted-foreground">على أزرار الوكلاء</p>
               </>
             )}
@@ -207,7 +207,7 @@ export default function Analytics() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-green-600">{whatsappTotal.toLocaleString('ar-SA')}</div>
+                <div className="text-2xl font-bold text-green-600">{whatsappTotal.toLocaleString('en-US')}</div>
                 <p className="text-xs text-muted-foreground">نقرات واتساب</p>
               </>
             )}
@@ -224,7 +224,7 @@ export default function Analytics() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-blue-600">{callTotal.toLocaleString('ar-SA')}</div>
+                <div className="text-2xl font-bold text-blue-600">{callTotal.toLocaleString('en-US')}</div>
                 <p className="text-xs text-muted-foreground">نقرات مكالمة</p>
               </>
             )}
@@ -348,9 +348,9 @@ export default function Analytics() {
                   {agentClicksSummary?.map((agent, index) => (
                     <tr key={index} className="border-b hover:bg-muted/50">
                       <td className="py-2 px-4 font-medium">{agent.agentName}</td>
-                      <td className="py-2 px-4">{agent.totalClicks.toLocaleString('ar-SA')}</td>
-                      <td className="py-2 px-4 text-green-600">{agent.whatsappClicks.toLocaleString('ar-SA')}</td>
-                      <td className="py-2 px-4 text-blue-600">{agent.callClicks.toLocaleString('ar-SA')}</td>
+                      <td className="py-2 px-4">{agent.totalClicks.toLocaleString('en-US')}</td>
+                      <td className="py-2 px-4 text-green-600">{agent.whatsappClicks.toLocaleString('en-US')}</td>
+                      <td className="py-2 px-4 text-blue-600">{agent.callClicks.toLocaleString('en-US')}</td>
                     </tr>
                   ))}
                 </tbody>

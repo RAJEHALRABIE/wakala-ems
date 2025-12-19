@@ -10,8 +10,8 @@ export default function Reports() {
   const { data: clients, isLoading } = trpc.clients.list.useQuery();
   const { data: stats } = trpc.dashboard.stats.useQuery();
 
-  const formatNumber = (num: number | null) => num ? num.toLocaleString("ar-SA") : "-";
-  const formatCurrency = (num: number | null) => num ? `${formatNumber(num)} ريال` : "-";
+  const formatNumber = (num: number | null) => num ? num.toLocaleString("en-US") : "-";
+  const formatCurrency = (num: number | null) => num ? `${num.toLocaleString("en-US")} ريال` : "-";
 
   // Group clients by status
   const clientsByStatus = clients?.reduce((acc, client) => {

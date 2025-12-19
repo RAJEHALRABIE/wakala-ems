@@ -1,6 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./routers/system.router.ts";
+import { systemRouter } from "./routers/system.router";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
@@ -8,6 +8,7 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { storagePut } from "./storage";
 import { CLIENT_STATUSES } from "@shared/statuses";
 import { extractCoordinates } from "@shared/coordinates";
+import { logger } from "./logger";
 
 const LOGIN_ACCESS_CODE = process.env.LOGIN_ACCESS_CODE || "BAREQ2030";
 const MASTER_KEY = process.env.MASTER_KEY || "RAJ0579";
@@ -21,10 +22,10 @@ try {
   if (GA4_CREDENTIALS) {
     const credentials = JSON.parse(GA4_CREDENTIALS);
     analyticsClient = new BetaAnalyticsDataClient({ credentials });
-    console.log('✅ GA4 Client initialized');
+    logger.info('✅ GA4 Client initialized');
   }
 } catch (error) {
-  console.error('❌ GA4 init failed:', error);
+  logger.error('❌ GA4 init failed:', { error });
 }
 
 // Safe date parser that avoids timezone issues
@@ -34,7 +35,7 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 // Create Zod enum from CLIENT_STATUSES
-const statusEnum = z.enum(CLIENT_STATUSES as [string, ...string[]]);
+const statusEnum = z.enum(CLIENT_STATUSES as unknown as [string, ...string[]]);
 
 // Property Document Types
 const propertyDocTypeEnum = z.enum(["Deed", "Ihkam", "Revivals", "Other"]);
@@ -100,10 +101,42 @@ export const appRouter = router({
     list: publicProcedure.query(() => db.getAllClients()),
     getById: publicProcedure
       .input(z.object({ id: z.number() }))
-      .query(({ input }) => db.getClientById(input.id)),
+      .query(async ({ input }) => {
+        try {
+          logger.info('Fetching client by ID', { clientId: input.id });
+          const client = await db.getClientById(input.id);
+          if (!client) {
+            logger.warn('Client not found', { clientId: input.id });
+          }
+          return client;
+        } catch (error) {
+          logger.error('Error fetching client by ID', { 
+            clientId: input.id, 
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined 
+          });
+          throw error;
+        }
+      }),
     getWithAgent: publicProcedure
       .input(z.object({ id: z.number() }))
-      .query(({ input }) => db.getClientWithAgent(input.id)),
+      .query(async ({ input }) => {
+        try {
+          logger.info('Fetching client with agent', { clientId: input.id });
+          const client = await db.getClientWithAgent(input.id);
+          if (!client) {
+            logger.warn('Client with agent not found', { clientId: input.id });
+          }
+          return client;
+        } catch (error) {
+          logger.error('Error fetching client with agent', { 
+            clientId: input.id, 
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined 
+          });
+          throw error;
+        }
+      }),
     getByRefCode: publicProcedure
       .input(z.object({ refCode: z.string() }))
       .query(({ input }) => db.getClientByRefCode(input.refCode)),
@@ -150,22 +183,43 @@ export const appRouter = router({
         }
       }))
       .mutation(async ({ input }) => {
-        const data: any = { ...input };
-        if (input.deedDate) data.deedDate = parseLocalDate(input.deedDate);
-        if (input.agencyDate) data.agencyDate = parseLocalDate(input.agencyDate);
-        if (input.requestDate) data.requestDate = parseLocalDate(input.requestDate);
-        
-        // Extract coordinates from mapLink or surveyMapRef
-        const mapUrl = input.mapLink || input.surveyMapRef;
-        if (mapUrl) {
-          const coords = extractCoordinates(mapUrl);
-          if (coords) {
-            data.latitude = coords.latitude;
-            data.longitude = coords.longitude;
+        try {
+          logger.info('Creating new client', { clientName: input.name });
+          const data: any = { ...input };
+          if (input.deedDate) data.deedDate = parseLocalDate(input.deedDate);
+          if (input.agencyDate) data.agencyDate = parseLocalDate(input.agencyDate);
+          if (input.requestDate) data.requestDate = parseLocalDate(input.requestDate);
+          
+          // Extract coordinates from mapLink or surveyMapRef
+          const mapUrl = input.mapLink || input.surveyMapRef;
+          if (mapUrl) {
+            const coords = extractCoordinates(mapUrl);
+            if (coords) {
+              data.latitude = coords.latitude;
+              data.longitude = coords.longitude;
+              logger.info('Extracted coordinates from map URL', { 
+                mapUrl, 
+                latitude: coords.latitude, 
+                longitude: coords.longitude 
+              });
+            }
           }
+          
+          // استدعاء createClient من db
+          const result = await db.createClient(data);
+          logger.info('Client created successfully', { 
+            clientId: result.insertedId || 'unknown',
+            clientName: input.name 
+          });
+          return result;
+        } catch (error) {
+          logger.error('Error creating client', { 
+            clientName: input.name,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined 
+          });
+          throw error;
         }
-        
-        return db.createClient(data);
       }),
     update: publicProcedure
       .input(z.object({
@@ -280,7 +334,7 @@ export const appRouter = router({
         fileSize: z.number().optional(),
         mimeType: z.string().optional(),
       }))
-      .mutation(({ input }) => db.createDocument(input)),
+      .mutation(({ input }) => db.addDocument(input)),
     update: publicProcedure
       .input(z.object({
         id: z.number(),
