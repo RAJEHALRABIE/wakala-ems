@@ -6,7 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./static";
 import { logger } from "../logger";
 import { registerClientDocumentRoutes } from "../routers/clientDocuments.router";
 
@@ -16,9 +16,9 @@ export async function startServer(): Promise<void> {
   // مرحلة التشخيص 1: فحص متغيرات البيئة
   // ============================================
   logger.info("🔍 Step 1: Starting server initialization...");
-  logger.info("📍 DIAGNOSTIC: process.env.PORT = " + process.env.PORT);
-  logger.info("📍 DIAGNOSTIC: NODE_ENV = " + process.env.NODE_ENV);
-  logger.info("📍 DIAGNOSTIC: Working Directory = " + process.cwd());
+  logger.info("🔍 DIAGNOSTIC: process.env.PORT = " + process.env.PORT);
+  logger.info("🔍 DIAGNOSTIC: NODE_ENV = " + process.env.NODE_ENV);
+  logger.info("🔍 DIAGNOSTIC: Working Directory = " + process.cwd());
   
   // ============================================
   // 🔧 PHASE 2: Express & HTTP Server Setup
@@ -39,7 +39,7 @@ export async function startServer(): Promise<void> {
   // Uploads directory setup
   const uploadsDir = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
-  logger.info("📁 [Server] Serving uploads from: " + uploadsDir);
+  logger.info("🔍 [Server] Serving uploads from: " + uploadsDir);
   
   // ============================================
   // 🔧 PHASE 4: Routes Configuration
@@ -71,6 +71,8 @@ export async function startServer(): Promise<void> {
   // ============================================
   if (process.env.NODE_ENV === "development") {
     logger.info("🔧 Using Vite dev server...");
+    // Dynamic import to avoid loading vite in production
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
     logger.info("🔧 Serving static production files...");
