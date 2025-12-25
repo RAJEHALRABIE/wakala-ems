@@ -8,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
+  root: './client', // Set client as the root for Vite
   plugins: [
     react(),
     tailwindcss(),
@@ -52,6 +53,9 @@ export default defineConfig({
     outDir: "dist/public",
     emptyOutDir: true,
     sourcemap: true,
+    rollupOptions: {
+      input: 'index.html', // Specify index.html as the entry point within the root
+    },
   },
   optimizeDeps: {
     exclude: ["lucide-react"],
