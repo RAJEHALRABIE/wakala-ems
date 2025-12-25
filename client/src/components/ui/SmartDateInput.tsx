@@ -1,195 +1,300 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useId } from "react";
+import { umalqura } from "@umalqura/core";
+import { Calendar, CalendarDays } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const SmartDateInput = ({
+// أسماء الأشهر الهجرية
+const HIJRI_MONTHS = [
+  "محرم", "صفر", "ربيع الأول", "ربيع الثاني",
+  "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان",
+  "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
+];
+
+// أسماء الأشهر الميلادية
+const GREGORIAN_MONTHS = [
+  "يناير", "فبراير", "مارس", "أبريل",
+  "مايو", "يونيو", "يوليو", "أغسطس",
+  "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+];
+
+interface SmartDateInputProps {
+  label: string;
+  value?: string; // ISO format: YYYY-MM-DD
+  onChange: (value: string) => void;
+  min?: string;
+  max?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  className?: string;
+  defaultToday?: boolean;
+}
+
+/**
+ * مكون إدخال التاريخ الذكي
+ * - يدخل المستخدم التاريخ الميلادي
+ * - يعرض التاريخ الهجري تلقائياً
+ * - يخزّن بصيغة ISO (YYYY-MM-DD)
+ */
+export function SmartDateInput({
   label,
   value,
   onChange,
-  calendarType
-}: {
-  label: string,
-  value: string | undefined,
-  onChange: (val: string) => void,
-  calendarType: "H" | "G"
-}) => {
-  // 1. تحليل القيمة الواردة بشكل آمن
-  const parseValue = (val: string | undefined) => {
-    if (!val) return { year: "", month: "", day: "" };
-    const parts = val.split("-");
-    return {
-      year: parts[0] || "",
-      month: parts[1] || "",
-      day: parts[2] || ""
-    };
-  };
+  min,
+  max,
+  required = false,
+  disabled = false,
+  error,
+  className,
+  defaultToday = true,
+}: SmartDateInputProps) {
+  const id = useId();
+  const [hijriDisplay, setHijriDisplay] = useState<string>("");
+  const [gregorianDisplay, setGregorianDisplay] = useState<string>("");
 
-  const initialParts = parseValue(value);
-  const [currentYear, setCurrentYear] = useState(initialParts.year);
-  const [currentMonth, setCurrentMonth] = useState(initialParts.month);
-  const [currentDay, setCurrentDay] = useState(initialParts.day);
-
-  // 2. تعريف البيانات الثابتة بطريقة أنظف
-  const calendarConfig = {
-    H: {
-      monthNames: ["محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"],
-      // نطاق سنوات أكثر منطقية (مثال: 1440-1500)
-      yearRange: { start: 1440, end: 1500 },
-      getDaysInMonth: (month: number, year: number) => {
-        // 📌 مهم: استبدل هذا بمنطق حساب الأيام الهجرية الحقيقي
-        // الهجري: الأشهر الفردية 30 يومًا، الزوجية 29 يومًا (مع استثناءات)
-        const isOddMonth = month % 2 === 1;
-        return isOddMonth ? 30 : 29;
-      }
-    },
-    G: {
-      monthNames: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
-      yearRange: { start: 2000, end: 2030 },
-      getDaysInMonth: (month: number, year: number) => {
-        // منطق الأيام الميلادي القياسي
-        if (month === 2) { // فبراير
-          return (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28;
-        }
-        return [4, 6, 9, 11].includes(month) ? 30 : 31;
-      }
+  // تحويل التاريخ الميلادي إلى هجري
+  const convertToHijri = (dateStr: string): string => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      
+      const hijri = umalqura(date);
+      const monthName = HIJRI_MONTHS[hijri.hm - 1];
+      return `${hijri.hd} ${monthName} ${hijri.hy} هـ`;
+    } catch {
+      return "";
     }
   };
 
-  const config = calendarConfig[calendarType];
+  // تنسيق التاريخ الميلادي للعرض
+  const formatGregorian = (dateStr: string): string => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      
+      const day = date.getDate();
+      const monthName = GREGORIAN_MONTHS[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day} ${monthName} ${year} م`;
+    } catch {
+      return "";
+    }
+  };
 
-  // 3. إنشاء قوائم السنوات والأيام ديناميكيًا باستخدام useMemo
-  const yearsList = useMemo(() => {
-    const { start, end } = config.yearRange;
-    return Array.from(
-      { length: end - start + 1 },
-      (_, i) => (end - i).toString() // سنوات تنازليًا
-    );
-  }, [config.yearRange]);
+  // الحصول على تاريخ اليوم بصيغة ISO
+  const getTodayISO = (): string => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
 
-  const daysList = useMemo(() => {
-    if (!currentMonth || !currentYear) return [];
-    const monthNum = parseInt(currentMonth);
-    const yearNum = parseInt(currentYear);
-    
-    if (isNaN(monthNum) || isNaN(yearNum)) return [];
-    
-    const daysCount = config.getDaysInMonth(monthNum, yearNum);
-    return Array.from(
-      { length: daysCount },
-      (_, i) => (i + 1).toString()
-    );
-  }, [currentMonth, currentYear, config]);
-
-  // 4. تحديث القيمة الأصلية عند تغيير `value` من الأب
+  // تعيين القيمة الافتراضية عند التحميل
   useEffect(() => {
-    const parts = parseValue(value);
-    setCurrentYear(parts.year);
-    setCurrentMonth(parts.month);
-    setCurrentDay(parts.day);
+    if (defaultToday && !value) {
+      const today = getTodayISO();
+      onChange(today);
+    }
+  }, []);
+
+  // تحديث العرض عند تغيير القيمة
+  useEffect(() => {
+    if (value) {
+      setHijriDisplay(convertToHijri(value));
+      setGregorianDisplay(formatGregorian(value));
+    } else {
+      setHijriDisplay("");
+      setGregorianDisplay("");
+    }
   }, [value]);
 
-  // 5. تصحيح الخلل: التهيئة الأولية المنطقية (بدون إعادة تعيين عشوائي)
-  useEffect(() => {
-    // التهيئة فقط عند عدم وجود قيمة ووجود جميع الحقول فارغة
-    if (!value && !currentYear && !currentMonth && !currentDay) {
-      const defaultYear = yearsList[yearsList.length - 1]; // آخر سنة في النطاق (الأقدم)
-      updateDate(defaultYear, "1", "1");
-    }
-    // تمت إزالة calendarType من dependencies لتجنب إعادة التعيين غير المرغوب فيه
-  }, [yearsList]); // التهيئة تعتمد فقط على yearsList
-
-  // 6. دالة التحديث المحسنة مع useCallback
-  const updateDate = useCallback((y: string, m: string, d: string) => {
-    // التأكد من تنسيق مكون من رقمين للأشهر والأيام
-    const formattedMonth = m.padStart(2, '0');
-    const formattedDay = d.padStart(2, '0');
-    
-    // تحديث الحالة الداخلية
-    setCurrentYear(y);
-    setCurrentMonth(m); // تخزين القيمة غير المنسقة لإدارة حالة Select
-    setCurrentDay(d);
-    
-    // إرسال القيمة المنسقة إلى الأب
-    onChange(`${y}-${formattedMonth}-${formattedDay}`);
-  }, [onChange]);
-
-  // 7. التأكد من أن اليوم المحدد صالح للشهر/السنة الحاليين
-  useEffect(() => {
-    if (currentDay && daysList.length > 0 && !daysList.includes(currentDay)) {
-      // إذا كان اليوم الحالي غير موجود في القائمة الجديدة، تعيين آخر يوم صالح
-      updateDate(currentYear, currentMonth, daysList[daysList.length - 1]);
-    }
-  }, [daysList, currentDay, currentYear, currentMonth, updateDate]);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+  };
 
   return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium text-gray-700">{label}</Label>
-      <div className="flex gap-2" dir="rtl">
-        {/* اليوم - قائمة ديناميكية */}
-        <Select
-          value={currentDay}
-          onValueChange={(v: string) => updateDate(currentYear, currentMonth, v)}
-          disabled={daysList.length === 0}
-        >
-          <SelectTrigger className="w-[70px] bg-white border-gray-300">
-            <SelectValue placeholder="يوم">
-              {currentDay || "يوم"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[200px]">
-            {daysList.map((d) => (
-              <SelectItem key={d} value={d}>{d}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className={cn("space-y-2", className)}>
+      {/* Label */}
+      <label 
+        htmlFor={id} 
+        className="block text-sm font-medium text-gray-700"
+      >
+        {label}
+        {required && <span className="text-red-500 mr-1">*</span>}
+      </label>
 
-        {/* الشهر */}
-        <Select
-          value={currentMonth}
-          onValueChange={(v: string) => updateDate(currentYear, v, currentDay)}
-        >
-          <SelectTrigger className="flex-1 bg-white border-gray-300 min-w-[120px]">
-            <SelectValue placeholder="شهر">
-              {currentMonth ? config.monthNames[parseInt(currentMonth) - 1] : "شهر"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[200px]">
-            {config.monthNames.map((name, index) => (
-              <SelectItem key={index + 1} value={(index + 1).toString()}>
-                <span className="flex items-center justify-between w-full gap-4">
-                  <span>{name}</span>
-                  <span className="text-muted-foreground text-xs opacity-50">
-                    {index + 1}
-                  </span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* السنة */}
-        <Select
-          value={currentYear}
-          onValueChange={(v: string) => updateDate(v, currentMonth, currentDay)}
-        >
-          <SelectTrigger className="w-[90px] bg-white border-gray-300">
-            <SelectValue placeholder="سنة">
-              {currentYear || "سنة"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[200px]">
-            {yearsList.map((year) => (
-              <SelectItem key={year} value={year}>{year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Input Container */}
+      <div className="relative">
+        <input
+          id={id}
+          type="date"
+          value={value || ""}
+          onChange={handleChange}
+          min={min}
+          max={max}
+          required={required}
+          disabled={disabled}
+          className={cn(
+            "w-full px-4 py-3 pr-10",
+            "border rounded-lg",
+            "text-base text-gray-900",
+            "bg-white",
+            "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+            "disabled:bg-gray-100 disabled:cursor-not-allowed",
+            error ? "border-red-500" : "border-gray-300",
+            "transition-colors duration-200"
+          )}
+          dir="ltr"
+        />
+        <Calendar 
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" 
+        />
       </div>
-      {/* عرض تلميح بسيط */}
-      <p className="text-xs text-gray-500">
-        التقويم: {calendarType === "H" ? "هجري" : "ميلادي"} | التنسيق: سنة-شهر-يوم
-      </p>
+
+      {/* Date Display Cards */}
+      {value && (
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          {/* Hijri Display */}
+          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <CalendarDays className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs text-emerald-600 block">هجري</span>
+              <span className="text-sm font-semibold text-emerald-800 block truncate">
+                {hijriDisplay || "—"}
+              </span>
+            </div>
+          </div>
+
+          {/* Gregorian Display */}
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Calendar className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs text-blue-600 block">ميلادي</span>
+              <span className="text-sm font-semibold text-blue-800 block truncate">
+                {gregorianDisplay || "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <p className="text-sm text-red-500 mt-1">{error}</p>
+      )}
     </div>
   );
-};
+}
+
+/**
+ * مكون نطاق التاريخ (من - إلى)
+ */
+interface DateRangeInputProps {
+  startLabel?: string;
+  endLabel?: string;
+  startValue?: string;
+  endValue?: string;
+  onStartChange: (value: string) => void;
+  onEndChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function DateRangeInput({
+  startLabel = "تاريخ البداية",
+  endLabel = "تاريخ النهاية",
+  startValue,
+  endValue,
+  onStartChange,
+  onEndChange,
+  required = false,
+  disabled = false,
+  className,
+}: DateRangeInputProps) {
+  // حساب المدة المتبقية
+  const calculateRemaining = (): { days: number; status: "safe" | "warning" | "danger" | "expired" } | null => {
+    if (!endValue) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(endValue);
+    end.setHours(0, 0, 0, 0);
+    
+    const diffTime = end.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    let status: "safe" | "warning" | "danger" | "expired";
+    if (diffDays < 0) {
+      status = "expired";
+    } else if (diffDays <= 30) {
+      status = "danger";
+    } else if (diffDays <= 90) {
+      status = "warning";
+    } else {
+      status = "safe";
+    }
+    
+    return { days: diffDays, status };
+  };
+
+  const remaining = calculateRemaining();
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "safe": return "bg-green-100 text-green-800 border-green-300";
+      case "warning": return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "danger": return "bg-red-100 text-red-800 border-red-300";
+      case "expired": return "bg-gray-100 text-gray-800 border-gray-300";
+      default: return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
+  const getStatusText = (remaining: { days: number; status: string }) => {
+    if (remaining.status === "expired") {
+      return `منتهية منذ ${Math.abs(remaining.days)} يوم`;
+    }
+    return `متبقي ${remaining.days} يوم`;
+  };
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SmartDateInput
+          label={startLabel}
+          value={startValue}
+          onChange={onStartChange}
+          max={endValue}
+          required={required}
+          disabled={disabled}
+          defaultToday={true}
+        />
+        
+        <SmartDateInput
+          label={endLabel}
+          value={endValue}
+          onChange={onEndChange}
+          min={startValue}
+          required={required}
+          disabled={disabled}
+          defaultToday={false}
+        />
+      </div>
+
+      {/* Remaining Days Indicator */}
+      {remaining && (
+        <div className={cn(
+          "flex items-center justify-center gap-2 p-3 rounded-lg border",
+          getStatusColor(remaining.status)
+        )}>
+          <span className="text-sm font-medium">
+            {getStatusText(remaining)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default SmartDateInput;
