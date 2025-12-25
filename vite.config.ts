@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  root: "./client", // Set client as the root for Vite
+  root: path.resolve(__dirname, 'client'), // Set client as the root for Vite, using path.resolve for robustness
   plugins: [
     react(),
     tailwindcss(),
