@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { logger } from "../logger";
+import { registerClientDocumentRoutes } from "../routers/clientDocuments.router";
 
 export async function startServer(): Promise<void> {
   // ============================================
@@ -58,7 +59,11 @@ export async function startServer(): Promise<void> {
       createContext,
     })
   );
-  logger.info("🔍 Step 2.5: OAuth & tRPC routes registered");
+  
+  // Client Document Routes (Download/Preview)
+  registerClientDocumentRoutes(app);
+  
+  logger.info("🔍 Step 2.5: OAuth, tRPC & Client Document routes registered");
   
   // ============================================
   // 🔧 PHASE 5: Static Files / Vite Integration

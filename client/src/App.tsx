@@ -49,6 +49,9 @@ function Router() {
       <Route path="/clients/:id/edit">
         <ProtectedRoute component={ClientForm} />
       </Route>
+      <Route path="/clients/:id/archive">
+        <ProtectedRoute component={ClientArchive} />
+      </Route>
       <Route path="/clients/:id">
         <ProtectedRoute component={ClientDetails} />
       </Route>
@@ -95,3 +98,4 @@ function App() {
 }
 
 export default App;
+

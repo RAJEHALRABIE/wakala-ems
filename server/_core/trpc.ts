@@ -7,8 +7,41 @@ const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
 });
 
+// tRPC Logger Middleware
+const loggerMiddleware = t.middleware(async (opts) => {
+  const start = Date.now();
+  const { path, type, input } = opts;
+
+  // Log request
+  console.log('[tRPC Request]', { 
+    path, 
+    type, 
+    input: input ? JSON.stringify(input) : 'none',
+    timestamp: new Date().toISOString()
+  });
+
+  const result = await opts.next();
+
+  const duration = Date.now() - start;
+
+  // Log response
+  console.log('[tRPC Response]', { 
+    path, 
+    type, 
+    duration: `${duration}ms`,
+    ok: result.ok,
+    error: !result.ok ? result.error : undefined,
+    timestamp: new Date().toISOString()
+  });
+
+  return result;
+});
+
+// Apply logger middleware to all procedures
+const loggedProcedure = t.procedure.use(loggerMiddleware);
+
 export const router = t.router;
-export const publicProcedure = t.procedure;
+export const publicProcedure = loggedProcedure;
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;

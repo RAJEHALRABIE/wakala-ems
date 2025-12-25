@@ -4,6 +4,7 @@ import { createClient as createLibSQLClient } from "@libsql/client";
 import { eq, desc, like, sql, inArray } from "drizzle-orm";
 import { schema } from "../drizzle/schema-with-relations";
 import type { InsertAgent, InsertClient, InsertDocument, InsertUser, ClientStatus } from "../drizzle/schema.sqlite";
+import type { InsertClientDocument, InsertClientActivityLog, InsertClientNote } from "../drizzle/schema-with-relations";
 import { createId } from "@paralleldrive/cuid2";
 import { logger } from "./logger";
 
@@ -57,6 +58,10 @@ async function initializeDatabase() {
           -- Wakalah Info (Agency)
           wakalah_number TEXT,
           agency_date DATE,
+          agency_issue_date DATE,
+          agency_duration_days INTEGER,
+          agency_end_date DATE,
+          agency_expiry_date DATETIME,
 
           -- Property Document Type
           property_doc_type TEXT DEFAULT 'Deed',
@@ -139,6 +144,26 @@ async function initializeDatabase() {
           uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
         )`,
+
+        // CLIENT ACTIVITY LOG
+        `CREATE TABLE IF NOT EXISTS client_activity_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          client_id INTEGER NOT NULL,
+          action_type TEXT NOT NULL,
+          description TEXT,
+          meta TEXT,
+          performed_by_user_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
+
+        // CLIENT NOTES
+        `CREATE TABLE IF NOT EXISTS client_notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          client_id INTEGER NOT NULL,
+          note TEXT NOT NULL,
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
       ],
       "write",
     );
@@ -149,11 +174,30 @@ async function initializeDatabase() {
   }
 }
 
+// App Start Diagnostics: سجلات تشخيصية عند بدء الاتصال بقاعدة البيانات
+console.info('[DB DIAGNOSTIC] Starting database connection diagnostics...');
+console.info('[DB DIAGNOSTIC] SQLite file path: file:./wakala-ems.db');
+console.info('[DB DIAGNOSTIC] Working directory:', process.cwd());
+
 // تهيئة قاعدة البيانات عند البدء
 initializeDatabase();
 
+// التحقق من الاتصال الفعلي بقاعدة البيانات
+async function testDatabaseConnection() {
+  try {
+    const testResult = await libsqlClient.execute('SELECT 1 as test');
+    console.info('[DB DIAGNOSTIC] Database connection test successful:', testResult);
+    console.info('[DB DIAGNOSTIC] SQLite connection established successfully');
+  } catch (error) {
+    console.error('[DB DIAGNOSTIC] Database connection test failed:', error);
+  }
+}
+
+testDatabaseConnection();
+
 // إنشاء كائن drizzle للاستعلامات
 export const db = drizzle(libsqlClient, { schema });
+console.info('[DB DIAGNOSTIC] Drizzle ORM initialized with schema');
 
 // =================================================================
 // AGENTS
@@ -248,7 +292,11 @@ export const createClient = async (
   try {
     const refCode = generateRefCode(data.name);
     logger.info('[DB] Creating client', { clientName: data.name, refCode });
-    const result = await db.insert(schema.clients).values({ ...data, refCode });
+    
+    // قبول agencyExpiryDate مباشرة من الفرونت إند
+    const clientData: any = { ...data, refCode };
+    
+    const result = await db.insert(schema.clients).values(clientData);
     
     // libSQL returns result with lastInsertRowid
     const insertedId = Number(result.lastInsertRowid) || 0;
@@ -272,14 +320,111 @@ export const createClient = async (
   }
 };
 
-export const updateClient = (
+export const updateClient = async (
   id: number,
   data: Partial<InsertClient>,
-) =>
-  db
-    .update(schema.clients)
-    .set(data)
-    .where(eq(schema.clients.id, id));
+) => {
+  // نسخ البيانات للتحويل
+  const updateData: any = { ...data };
+  
+  // دالة مساعدة لتحويل أي قيمة تاريخ إلى timestamp (بالميللي ثانية) أو null
+  const convertToTimestamp = (dateValue: any): number | null => {
+    // إذا كانت القيمة فارغة أو غير محددة، إرجاع null
+    if (dateValue === null || dateValue === undefined || dateValue === '') {
+      return null;
+    }
+    
+    try {
+      let date: Date;
+      
+      if (dateValue instanceof Date) {
+        date = dateValue;
+      } else if (typeof dateValue === 'string') {
+        // التحقق من أن السلسلة ليست فارغة بعد trim
+        const trimmed = dateValue.trim();
+        if (trimmed === '') {
+          return null;
+        }
+        date = new Date(trimmed);
+      } else if (typeof dateValue === 'number') {
+        // القيمة timestamp - تحويل من ميللي ثانية
+        date = new Date(dateValue);
+      } else {
+        // محاولة التحويل العام
+        date = new Date(dateValue);
+      }
+      
+      // التحقق من صحة كائن التاريخ
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
+        return null;
+      }
+      
+      return date.getTime();
+    } catch (error) {
+      logger.error('[DB] Error converting to timestamp', { 
+        dateValue, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      return null;
+    }
+  };
+  
+  // تحويل التواريخ إلى timestamps
+  if (updateData.agencyExpiryDate !== undefined) {
+    updateData.agencyExpiryDate = convertToTimestamp(updateData.agencyExpiryDate);
+    logger.info('[DB] Converted agencyExpiryDate', { 
+      clientId: id,
+      timestamp: updateData.agencyExpiryDate 
+    });
+  }
+  
+  if (updateData.agencyDate !== undefined) {
+    updateData.agencyDate = convertToTimestamp(updateData.agencyDate);
+  }
+  
+  if (updateData.deedDate !== undefined) {
+    updateData.deedDate = convertToTimestamp(updateData.deedDate);
+  }
+  
+  if (updateData.requestDate !== undefined) {
+    updateData.requestDate = convertToTimestamp(updateData.requestDate);
+  }
+  
+  logger.info('[DB] Executing update with data', {
+    clientId: id,
+    agencyIssueDate: updateData.agencyIssueDate,
+    agencyDate: updateData.agencyDate,
+    agencyExpiryDate: updateData.agencyExpiryDate
+  });
+  
+  try {
+    const result = await db
+      .update(schema.clients)
+      .set(updateData)
+      .where(eq(schema.clients.id, id));
+    
+    logger.info('[DB] Update successful', { 
+      clientId: id,
+      result: result 
+    });
+    
+    // إرجاع نتيجة متوافقة مع tRPC
+    return {
+      columns: [],
+      columnTypes: [],
+      rows: [],
+      rowsAffected: result.rowsAffected || 1,
+      lastInsertRowid: "0"
+    };
+  } catch (error) {
+    logger.error('[DB] Update failed', { 
+      clientId: id,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined 
+    });
+    throw error;
+  }
+}
 
 export const deleteClient = (id: number) =>
   db.delete(schema.clients).where(eq(schema.clients.id, id));
@@ -372,7 +517,7 @@ export const setSetting = (key: string, value: string) => {
 };
 
 // =================================================================
-// DOCUMENTS
+// DOCUMENTS (Legacy)
 // =================================================================
 export const getDocumentsByClient = (clientId: number) =>
   db.query.documents.findMany({
@@ -394,6 +539,97 @@ export const updateDocument = (
 
 export const deleteDocument = (id: number) =>
   db.delete(schema.documents).where(eq(schema.documents.id, id));
+
+// =================================================================
+// CLIENT DOCUMENTS (New System)
+// =================================================================
+export const getClientDocuments = (clientId: number) =>
+  db.query.clientDocuments.findMany({
+    where: eq(schema.clientDocuments.clientId, clientId),
+    orderBy: [desc(schema.clientDocuments.createdAt)],
+    with: {
+      documentType: true,
+    },
+  });
+
+export const getClientDocument = (id: number) =>
+  db.query.clientDocuments.findFirst({
+    where: eq(schema.clientDocuments.id, id),
+    with: {
+      documentType: true,
+    },
+  });
+
+export const getClientDocumentByType = (clientId: number, documentTypeId: string) =>
+  db.query.clientDocuments.findFirst({
+    where: (cd, { and, eq }) => and(
+      eq(cd.clientId, clientId),
+      eq(cd.documentTypeId, documentTypeId)
+    ),
+  });
+
+export const createClientDocument = (data: InsertClientDocument) =>
+  db.insert(schema.clientDocuments).values(data);
+
+export const updateClientDocument = (
+  id: number,
+  data: Partial<InsertClientDocument>,
+) =>
+  db
+    .update(schema.clientDocuments)
+    .set(data)
+    .where(eq(schema.clientDocuments.id, id));
+
+export const deleteClientDocument = (id: number) =>
+  db.delete(schema.clientDocuments).where(eq(schema.clientDocuments.id, id));
+
+// =================================================================
+// CLIENT ACTIVITY LOG
+// =================================================================
+export const insertClientActivityLog = (data: InsertClientActivityLog) =>
+  db.insert(schema.clientActivityLog).values(data);
+
+export const getClientActivityLogs = (clientId: number, limit = 50) =>
+  db.query.clientActivityLog.findMany({
+    where: eq(schema.clientActivityLog.clientId, clientId),
+    orderBy: [desc(schema.clientActivityLog.createdAt)],
+    limit,
+    with: {
+      client: true,
+      performedByUser: true,
+    },
+  });
+
+// =================================================================
+// CLIENT NOTES
+// =================================================================
+export const insertClientNote = (data: InsertClientNote) =>
+  db.insert(schema.clientNotes).values(data);
+
+export const getClientNotes = (clientId: number) =>
+  db.query.clientNotes.findMany({
+    where: eq(schema.clientNotes.clientId, clientId),
+    orderBy: [desc(schema.clientNotes.createdAt)],
+    with: {
+      client: true,
+      createdByUser: true,
+    },
+  });
+
+export const getClientNoteById = (id: number) =>
+  db.query.clientNotes.findFirst({
+    where: eq(schema.clientNotes.id, id),
+    with: {
+      client: true,
+      createdByUser: true,
+    },
+  });
+
+export const updateClientNote = (id: number, data: Partial<InsertClientNote>) =>
+  db.update(schema.clientNotes).set(data).where(eq(schema.clientNotes.id, id));
+
+export const deleteClientNote = (id: number) =>
+  db.delete(schema.clientNotes).where(eq(schema.clientNotes.id, id));
 
 // =================================================================
 // USERS

@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./routers/system.router";
+import { clientDocumentsRouter } from "./routers/clientDocuments.router";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
@@ -29,9 +30,52 @@ try {
 }
 
 // Safe date parser that avoids timezone issues
-function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
+function parseLocalDate(dateStr: string | null | undefined): Date | null {
+  // التحقق من صحة المدخل
+  if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') {
+    logger.warn('[Router] parseLocalDate: invalid input', { dateStr });
+    return null;
+  }
+  
+  try {
+    logger.info('[Router] parseLocalDate input', { dateStr });
+    const parts = dateStr.split('-');
+    
+    // التحقق من صحة التنسيق
+    if (parts.length !== 3) {
+      logger.error('[Router] parseLocalDate: invalid format', { dateStr });
+      return null;
+    }
+    
+    const [year, month, day] = parts.map(Number);
+    
+    // التحقق من صحة الأرقام
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      logger.error('[Router] parseLocalDate: NaN values', { dateStr, year, month, day });
+      return null;
+    }
+    
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    
+    // التحقق من صحة التاريخ الناتج
+    if (isNaN(date.getTime())) {
+      logger.error('[Router] parseLocalDate: invalid date object', { dateStr });
+      return null;
+    }
+    
+    logger.info('[Router] parseLocalDate result', { 
+      input: dateStr, 
+      output: date.toISOString(),
+      year, month, day 
+    });
+    return date;
+  } catch (error) {
+    logger.error('[Router] parseLocalDate error', { 
+      dateStr, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    return null;
+  }
 }
 
 // Create Zod enum from CLIENT_STATUSES
@@ -137,6 +181,22 @@ export const appRouter = router({
           throw error;
         }
       }),
+    activityLogs: publicProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ input }) => {
+        try {
+          logger.info('Fetching activity logs for client', { clientId: input.clientId });
+          const logs = await db.getClientActivityLogs(input.clientId);
+          return logs;
+        } catch (error) {
+          logger.error('Error fetching activity logs', { 
+            clientId: input.clientId,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined 
+          });
+          throw error;
+        }
+      }),
     getByRefCode: publicProcedure
       .input(z.object({ refCode: z.string() }))
       .query(({ input }) => db.getClientByRefCode(input.refCode)),
@@ -153,23 +213,34 @@ export const appRouter = router({
         idNumber: z.string().optional(),
         agentId: z.number().optional(),
         wakalahNumber: z.string().optional(),
-        agencyDate: z.string().optional(),
+        agencyDate: z.string().nullable().optional(),
+        agencyExpiryDate: z.string().nullable().optional(),
+        agencyDurationDays: z.number().optional(),
         propertyDocType: propertyDocTypeEnum.optional(),
         deedNumber: z.string().optional(),
-        deedDate: z.string().optional(),
+        deedDate: z.string().nullable().optional(),
         requestNumber: z.string().optional(),
-        requestDate: z.string().optional(),
+        requestDate: z.string().nullable().optional(),
         propertyDescription: z.string().optional(),
         city: z.string().optional(),
         mapLink: z.string().optional(),
         district: z.string().optional(),
         surveyMapRef: z.string().optional(),
         status: statusEnum.optional(),
+        expropriationType: z.enum(["FULL", "PARTIAL", "IMPROVEMENTS_ONLY"]).optional(),
+        decisionNumber: z.string().optional(),
+        decisionDate: z.string().nullable().optional(),
+        expropriatedArea: z.number().optional(),
+        remainingArea: z.number().optional(),
+        improvementValue: z.number().optional(),
         areaSqm: z.number().optional(),
         expectedCompensationPerSqm: z.number().optional(),
         expectedCompensationTotal: z.number().optional(),
         successFee: z.number().optional(),
         baseFeePercentage: z.number().optional(),
+        damageToRemainingComp: z.number().optional(),
+        extraCompRate: z.number().optional(),
+        officialCompensationAmount: z.number().optional(),
         missingDocuments: z.string().optional(),
         improvementTypes: z.array(z.string()).optional(),
         improvementOtherDescription: z.string().optional(),
@@ -186,8 +257,9 @@ export const appRouter = router({
         try {
           logger.info('Creating new client', { clientName: input.name });
           const data: any = { ...input };
-          if (input.deedDate) data.deedDate = parseLocalDate(input.deedDate);
-          if (input.agencyDate) data.agencyDate = parseLocalDate(input.agencyDate);
+        if (input.deedDate) data.deedDate = input.deedDate;
+        if (input.agencyDate) data.agencyDate = input.agencyDate;
+        if (input.agencyExpiryDate) data.agencyExpiryDate = input.agencyExpiryDate;
           if (input.requestDate) data.requestDate = parseLocalDate(input.requestDate);
           
           // Extract coordinates from mapLink or surveyMapRef
@@ -229,28 +301,40 @@ export const appRouter = router({
         idNumber: z.string().optional(),
         agentId: z.number().nullable().optional(),
         wakalahNumber: z.string().optional(),
-        agencyDate: z.string().optional(),
+        agencyDate: z.string().nullable().optional(),
+        agencyExpiryDate: z.string().nullable().optional(),
+        agencyDurationDays: z.number().optional(),
         propertyDocType: propertyDocTypeEnum.optional(),
         deedNumber: z.string().optional(),
-        deedDate: z.string().optional(),
+        deedDate: z.string().nullable().optional(),
         requestNumber: z.string().optional(),
-        requestDate: z.string().optional(),
+        requestDate: z.string().nullable().optional(),
         propertyDescription: z.string().optional(),
         city: z.string().optional(),
         mapLink: z.string().optional(),
         district: z.string().optional(),
         surveyMapRef: z.string().optional(),
         status: statusEnum.optional(),
+        expropriationType: z.enum(["FULL", "PARTIAL", "IMPROVEMENTS_ONLY"]).optional(),
+        decisionNumber: z.string().optional(),
+        decisionDate: z.string().nullable().optional(),
+        expropriatedArea: z.number().optional(),
+        remainingArea: z.number().optional(),
+        improvementValue: z.number().optional(),
         areaSqm: z.number().optional(),
         expectedCompensationPerSqm: z.number().optional(),
         expectedCompensationTotal: z.number().optional(),
         successFee: z.number().optional(),
         baseFeePercentage: z.number().optional(),
+        damageToRemainingComp: z.number().optional(),
+        extraCompRate: z.number().optional(),
+        officialCompensationAmount: z.number().optional(),
         missingDocuments: z.string().optional(),
         improvementTypes: z.array(z.string()).nullable().optional(),
         improvementOtherDescription: z.string().nullable().optional(),
       }).superRefine((data, ctx) => {
-        if (data.improvementTypes?.includes("OTHER") && !data.improvementOtherDescription) {
+        if (data.improvementTypes?.includes("OTHER") && !data.improvementOtherDescription)
+ {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["improvementOtherDescription"],
@@ -261,9 +345,45 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         const updateData: any = { ...data };
-        if (data.deedDate) updateData.deedDate = parseLocalDate(data.deedDate);
-        if (data.agencyDate) updateData.agencyDate = parseLocalDate(data.agencyDate);
-        if (data.requestDate) updateData.requestDate = parseLocalDate(data.requestDate);
+        logger.info('[Router] Client update input', { id, data });
+        
+        if (data.deedDate !== undefined) {
+          updateData.deedDate = data.deedDate ? parseLocalDate(data.deedDate) : null;
+          logger.info('[Router] Processed deedDate', { 
+            original: data.deedDate, 
+            parsed: updateData.deedDate 
+          });
+        }
+        if (data.agencyDate !== undefined) {
+          updateData.agencyDate = data.agencyDate ? parseLocalDate(data.agencyDate) : null;
+          logger.info('[Router] Processed agencyDate', { 
+            original: data.agencyDate, 
+            parsed: updateData.agencyDate 
+          });
+        }
+        if (data.agencyExpiryDate !== undefined) {
+          updateData.agencyExpiryDate = data.agencyExpiryDate ? parseLocalDate(data.agencyExpiryDate) : null;
+          logger.info('[Router] Processed agencyExpiryDate', { 
+            original: data.agencyExpiryDate, 
+            parsed: updateData.agencyExpiryDate,
+            parsedISO: updateData.agencyExpiryDate ? updateData.agencyExpiryDate.toISOString() : 'null'
+          });
+        }
+        if (data.requestDate !== undefined) {
+          updateData.requestDate = data.requestDate ? parseLocalDate(data.requestDate) : null;
+          logger.info('[Router] Processed requestDate', { 
+            original: data.requestDate, 
+            parsed: updateData.requestDate 
+          });
+        }
+        
+        if (data.decisionDate !== undefined) {
+          updateData.decisionDate = data.decisionDate ? parseLocalDate(data.decisionDate) : null;
+          logger.info('[Router] Processed decisionDate', { 
+            original: data.decisionDate, 
+            parsed: updateData.decisionDate 
+          });
+        }
         
         const mapUrl = data.mapLink || data.surveyMapRef;
         if (mapUrl) {
@@ -274,7 +394,20 @@ export const appRouter = router({
           }
         }
         
-        return db.updateClient(id, updateData);
+        logger.info('[Router] Calling db.updateClient', { id, updateData });
+        const result = await db.updateClient(id, updateData);
+        
+        // تسجيل نشاط تحديث العميل
+        const { logClientActivity } = await import('./logging');
+        await logClientActivity({
+          clientId: id,
+          actionType: 'STATUS_CHANGE',
+          description: 'تم تحديث بيانات العميل',
+          meta: { updatedFields: Object.keys(data) },
+          performedByUserId: 1, // System Admin
+        });
+        
+        return result;
       }),
     delete: publicProcedure
       .input(z.object({ id: z.number(), masterKey: z.string() }))
@@ -362,6 +495,7 @@ export const appRouter = router({
         return { url, fileKey, fileSize: buffer.length };
       }),
   }),
+  clientDocuments: clientDocumentsRouter,
   analytics: router({
     getAgentClicks: publicProcedure
       .input(z.object({

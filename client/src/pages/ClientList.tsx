@@ -140,10 +140,10 @@ export default function ClientList() {
     if (!clients) return { total: 0, new: 0, processing: 0, completed: 0, totalArea: 0 };
     return {
       total: clients.length,
-      new: clients.filter(c => c.status === "New").length,
-      processing: clients.filter(c => ["Processing", "FileSubmitted", "Valuation"].includes(c.status)).length,
-      completed: clients.filter(c => c.status === "Completed").length,
-      totalArea: clients.reduce((sum, c) => sum + (parseFloat(c.areaSqm || "0")), 0),
+      new: clients.filter((c: any) => c.status === "New").length,
+      processing: clients.filter((c: any) => ["Processing", "FileSubmitted", "Valuation"].includes(c.status)).length,
+      completed: clients.filter((c: any) => c.status === "Completed").length,
+      totalArea: clients.reduce((sum: number, c: any) => sum + (parseFloat(c.areaSqm || "0")), 0),
     };
   }, [clients]);
 
@@ -618,71 +618,100 @@ const calculateFinancials = (client: any) => {
         </div>
       </div>
 
-      {/* بطاقات الإحصائيات المحسنة */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        {/* إجمالي العملاء */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/20 group hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Users className="h-7 w-7" />
+      {/* أيقونات الحالات - التصميم السابق */}
+      <div className="stagger-children">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-3 text-right">توزيع الحالات</h3>
+          <p className="text-sm text-muted-foreground mb-4 text-right">
+            نظرة سريعة على عدد العملاء في كل حالة من حالات الملف
+          </p>
+        </div>
+        
+        <div className="relative">
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none z-10" />
+          
+          <div className="flex gap-3 overflow-x-auto pb-4 px-2 scrollbar-hide touch-scroll">
+            {CLIENT_STATUSES.map((status) => {
+              const count = clients?.filter((c: any) => c.status === status).length || 0;
+              const IconComponent = STATUS_ICONS[status];
+              const label = STATUS_LABELS[status];
+              const gradient = STATUS_GRADIENTS[status] || "from-gray-400 to-gray-500";
+              const bgColor = STATUS_BG_COLORS[status] || "bg-gray-50 dark:bg-gray-900/30";
+              
+              return (
+                <div 
+                  key={status}
+                  className={`
+                    flex-shrink-0 relative group cursor-pointer transition-all duration-300
+                    hover:scale-[1.03] hover:shadow-lg
+                    ${bgColor} rounded-xl border border-border/50
+                    overflow-hidden w-32
+                  `}
+                  onClick={() => {
+                    setStatusFilter(statusFilter === status ? "all" : status);
+                    sounds.click();
+                  }}
+                >
+                  {/* شريط الحالة العلوي */}
+                  <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
+                  
+                  <div className="p-4">
+                    {/* أيقونة الحالة */}
+                    <div className="flex items-center justify-center mb-2">
+                      <div className={`
+                        w-10 h-10 rounded-xl flex items-center justify-center
+                        bg-gradient-to-br ${gradient} text-white
+                        shadow-md group-hover:shadow-lg transition-shadow
+                      `}>
+                        {IconComponent || <Users className="h-5 w-5" />}
+                      </div>
+                    </div>
+                    
+                    {/* اسم الحالة وعدد العملاء */}
+                    <div className="text-center">
+                      <div className="text-xl font-bold mb-1">{count}</div>
+                      <div className="text-xs font-medium line-clamp-2 h-8 overflow-hidden">
+                        {label}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* تأثير عند التحديد */}
+                  {statusFilter === status && (
+                    <div className="absolute inset-0 border-2 border-primary/50 rounded-xl pointer-events-none" />
+                  )}
+                  
+                  {/* تلميح عند التحويم */}
+                  <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* بطاقة إجمالي العملاء */}
+        <div className="mt-6">
+          <Card className="border-0 bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/20">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                    <Users className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-4xl font-bold">{stats.total}</p>
+                    <p className="text-sm text-white/80">إجمالي العملاء</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm opacity-90">المساحة الإجمالية</p>
+                  <p className="text-2xl font-bold">{formatNumber(stats.totalArea)} م²</p>
+                </div>
               </div>
-              <div>
-                <p className="text-4xl font-bold">{stats.total}</p>
-                <p className="text-sm text-white/80">إجمالي العملاء</p>
-              </div>
-            </div>
-          </CardContent>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        </Card>
-
-        {/* عملاء جدد */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl shadow-emerald-500/20 group hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Sparkles className="h-7 w-7" />
-              </div>
-              <div>
-                <p className="text-4xl font-bold">{stats.new}</p>
-                <p className="text-sm text-white/80">عملاء جدد</p>
-              </div>
-            </div>
-          </CardContent>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        </Card>
-
-        {/* قيد المعالجة */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xl shadow-amber-500/20 group hover:shadow-2xl hover:shadow-amber-500/30 transition-all duration-300">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Clock className="h-7 w-7" />
-              </div>
-              <div>
-                <p className="text-4xl font-bold">{stats.processing}</p>
-                <p className="text-sm text-white/80">قيد المعالجة</p>
-              </div>
-            </div>
-          </CardContent>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        </Card>
-
-        {/* مكتمل */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl shadow-violet-500/20 group hover:shadow-2xl hover:shadow-violet-500/30 transition-all duration-300">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                <CheckCircle2 className="h-7 w-7" />
-              </div>
-              <div>
-                <p className="text-4xl font-bold">{stats.completed}</p>
-                <p className="text-sm text-white/80">مكتمل</p>
-              </div>
-            </div>
-          </CardContent>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* شريط البحث والفلترة */}
@@ -697,7 +726,7 @@ const calculateFinancials = (client: any) => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pr-12 h-12 text-base rounded-xl border-2 border-transparent focus:border-primary/50 transition-all"
-                onFocus={() => sounds.pop()}
+              onFocus={() => (sounds as any).pop()}
               />
               {search && (
                 <button 
@@ -713,7 +742,7 @@ const calculateFinancials = (client: any) => {
             </div>
 
             {/* فلتر الحالة */}
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); sounds.toggle(); }}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); (sounds as any).toggle(); }}>
               <SelectTrigger className="w-full sm:w-56 h-12 rounded-xl border-2 border-transparent focus:border-primary/50">
                 <Filter className="h-4 w-4 ml-2" />
                 <SelectValue placeholder="جميع الحالات" />
@@ -741,7 +770,7 @@ const calculateFinancials = (client: any) => {
               <Button
                 variant={viewMode === "cards" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => { setViewMode("cards"); sounds.toggle(); }}
+                onClick={() => { setViewMode("cards"); (sounds as any).toggle(); }}
                 className="h-9 rounded-lg"
               >
                 <LayoutGrid className="h-4 w-4 ml-1" />
@@ -750,7 +779,7 @@ const calculateFinancials = (client: any) => {
               <Button
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => { setViewMode("list"); sounds.toggle(); }}
+                onClick={() => { setViewMode("list"); (sounds as any).toggle(); }}
                 className="h-9 rounded-lg"
               >
                 <List className="h-4 w-4 ml-1" />

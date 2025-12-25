@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 export default function TrackOrder() {
   const [orderNumber, setOrderNumber] = useState("");
@@ -65,7 +66,10 @@ export default function TrackOrder() {
       });
     } else {
       navigator.clipboard.writeText(url);
-      alert("تم نسخ الرابط!");
+      toast.success("تم نسخ الرابط!", {
+        description: "يمكنك الآن مشاركة الرابط مع الآخرين",
+        duration: 3000,
+      });
     }
   };
 

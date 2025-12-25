@@ -641,9 +641,9 @@
   background: linear-gradient(
     90deg,
     var(--muted) 0%,
-    var(--muted-foreground/0.1) 20%,
-    var(--muted-foreground/0.2) 40%,
-    var(--muted-foreground/0.1) 60%,
+    var(--muted-foreground, 0.1) 20%,
+    var(--muted-foreground, 0.2) 40%,
+    var(--muted-foreground, 0.1) 60%,
     var(--muted) 80%,
     var(--muted) 100%
   );

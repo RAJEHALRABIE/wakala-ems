@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { trpc } from '../utils/trpc';
+import { toast } from 'sonner';
 
 // تعريف أنواع النزع (عربي سليم)
 const EXPROPRIATION_TYPES = [
@@ -85,7 +86,10 @@ export function ClientForm() {
       navigate('/clients');
     },
     onError: (error) => {
-      alert(`حدث خطأ: ${error.message}`);
+      toast.error('حدث خطأ', {
+        description: error.message,
+        duration: 5000,
+      });
     }
   });
 

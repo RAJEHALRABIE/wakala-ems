@@ -1,34 +1,26 @@
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import fs from "node:fs";
-import path from "path";
 import { defineConfig } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import react from "@vitejs/plugin-react";
+import { fileURLToPath } from 'url';
+import path from "path";
+import tailwindcss from "@tailwindcss/vite";
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  plugins,
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
   resolve: {
     alias: {
-      "@": path.resolve(process.cwd(), "client", "src"),
-      "@shared": path.resolve(process.cwd(), "shared"),
-      "@assets": path.resolve(process.cwd(), "attached_assets"),
-    },
-  },
-  envDir: process.cwd(),
-  root: path.resolve(process.cwd(), "client"),
-  publicDir: path.resolve(process.cwd(), "client", "public"),
-  build: {
-    outDir: path.resolve(process.cwd(), "dist/public"),
-    emptyOutDir: true,
-    rollupOptions: {
-      external: ["@paralleldrive/cuid2"],
+      "@": path.resolve(__dirname, "./client/src"),
+      "@shared": path.resolve(__dirname, "./shared"),
     },
   },
   server: {
     host: true,
+    port: 5173,
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",
@@ -48,6 +40,20 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path,
+      },
     },
+  },
+  build: {
+    outDir: "dist/public",
+    emptyOutDir: true,
+    sourcemap: true,
+  },
+  optimizeDeps: {
+    exclude: ["lucide-react"],
   },
 });
