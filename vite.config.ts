@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  root: path.resolve(__dirname, 'client'), // Set client as the root for Vite, using path.resolve for robustness
+  root: "client", // تغيير: استخدم مسار نسبي بدل path.resolve
   plugins: [
     react(),
     tailwindcss(),
@@ -50,12 +50,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "../dist/public", // Changed from "dist/public"
+    outDir: "../dist/public",
     emptyOutDir: true,
     sourcemap: true,
-    rollupOptions: {
-      input: path.resolve(__dirname, "client", "index.html"), // Use absolute path for index.html
-    },
+    // إزالة rollupOptions.input - Vite سيجد index.html تلقائياً من root
   },
   optimizeDeps: {
     exclude: ["lucide-react"],
