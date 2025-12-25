@@ -8,13 +8,14 @@
     "start-all": "concurrently \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "nodemon --exec tsx server/index.ts --watch server --ext ts,js,json",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --resolve-extensions=.ts,.tsx --external:express --external:dotenv --external:@google-analytics/data --external:sqlstring --external:superjson --external:mysql2 --external:source-map-js --external:enhanced-resolve --external:lightningcss --external:detect-libc --external:@aws-sdk/client-s3 --external:debug --external:axios --external:js-tokens --external:picomatch --external:postcss --external:@babel/preset-typescript --external:json5 --external:browserslist --external:fsevents --external:@tailwindcss/oxide --external:@libsql/client --external:./dynamic-import --external:winston --outfile=dist/server/index.js",
+    "build": "vite build --config vite.config.ts && esbuild server/index.ts --bundle --platform=node --format=esm --resolve-extensions=.ts,.tsx --external:express --external:dotenv --external:@google-analytics/data --external:sqlstring --external:superjson --external:mysql2 --external:source-map-js --external:enhanced-resolve --external:lightningcss --external:detect-libc --external:@aws-sdk/client-s3 --external:debug --external:axios --external:js-tokens --external:picomatch --external:postcss --external:@babel/preset-typescript --external:json5 --external:browserslist --external:fsevents --external:@tailwindcss/oxide --external:@libsql/client --external:./dynamic-import --external:winston --outfile=dist/server/index.js",
     "start": "node dist/server/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "kill-ports": "taskkill /F /IM node.exe /T /FI \"WINDOWTITLE eq wakala-ems*\" || exit 0",
-"clean-env": "(if exist node_modules\\.vite rmdir /s /q node_modules\\.vite) & (if exist client\\node_modules\\.vite rmdir /s /q client\\node_modules\\.vite)"  },
+"clean-env": "if exist node_modules\\.vite rmdir /s /q node_modules\\.vite || true && if exist client\\node_modules\\.vite rmdir /s /q client\\node_modules\\.vite || true"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
     "@aws-sdk/s3-request-presigner": "^3.693.0",

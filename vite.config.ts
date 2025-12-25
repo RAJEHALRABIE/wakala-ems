@@ -54,7 +54,7 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
-      input: "index.html", // Specify index.html as the entry point within the root
+      input: path.resolve(__dirname, "client", "index.html"), // Use absolute path for index.html
     },
   },
   optimizeDeps: {
