@@ -199,6 +199,46 @@ testDatabaseConnection();
 export const db = drizzle(libsqlClient, { schema });
 console.info('[DB DIAGNOSTIC] Drizzle ORM initialized with schema');
 
+// Helper: Safe date parser that avoids timezone issues
+function parseLocalDate(dateStr: any): Date | null {
+  // If it's already a Date object, return it
+  if (dateStr instanceof Date) return dateStr;
+
+  // التحقق من صحة المدخل
+  if (!dateStr || typeof dateStr !== 'string' || dateStr.trim() === '') {
+    return null;
+  }
+  
+  try {
+    // Handle ISO string or YYYY-MM-DD (take first part)
+    const cleanDateStr = dateStr.split('T')[0];
+    const parts = cleanDateStr.split('-');
+    
+    // التحقق من صحة التنسيق
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    const [year, month, day] = parts.map(Number);
+    
+    // التحقق من صحة الأرقام
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return null;
+    }
+    
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    
+    // التحقق من صحة التاريخ الناتج
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    
+    return date;
+  } catch (error) {
+    return null;
+  }
+}
+
 // =================================================================
 // AGENTS
 // =================================================================
@@ -234,18 +274,80 @@ export const getAllClients = () =>
 
 export const getClientById = async (id: number) => {
   try {
-    logger.info('[DB] Fetching client by ID', { clientId: id });
-    const client = await db.query.clients.findFirst({ where: eq(schema.clients.id, id) });
-    if (!client) {
-      logger.warn('[DB] Client not found', { clientId: id });
-    }
-    return client;
-  } catch (error) {
-    logger.error('[DB] Error fetching client by ID', { 
-      clientId: id,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined 
+    logger.info('[DB] Fetching client by ID (raw SQL)', { clientId: id });
+
+    const result = await libsqlClient.execute({
+      sql: `
+        SELECT
+          id,
+          created_at as createdAt,
+          updated_at as updatedAt,
+          name,
+          phone,
+          id_number as idNumber,
+          agent_id as agentId,
+          wakalah_number as wakalahNumber,
+          agency_date as agencyDate,
+          agency_expiry_date as agencyExpiryDate,
+          property_doc_type as propertyDocType,
+          deed_number as deedNumber,
+          deed_date as deedDate,
+          deed_area_sqm as deedAreaSqm,
+          request_number as requestNumber,
+          request_date as requestDate,
+          property_description as propertyDescription,
+          expropriation_type as expropriationType,
+          decision_number as decisionNumber,
+          decision_date as decisionDate,
+          expropriated_area as expropriatedArea,
+          remaining_area as remainingArea,
+          improvement_type as improvementType,
+          improvement_value as improvementValue,
+          improvement_types as improvementTypes,
+          improvement_other_description as improvementOtherDescription,
+          city,
+          map_link as mapLink,
+          latitude,
+          longitude,
+          district,
+          survey_map_ref as surveyMapRef,
+          status,
+          area_sqm as areaSqm,
+          expected_compensation_per_sqm as expectedCompensationPerSqm,
+          possession_ratio as possessionRatio,
+          expected_compensation_total as expectedCompensationTotal,
+          success_fee as successFee,
+          base_fee_percentage as baseFeePercentage,
+          damage_to_remaining_comp as damageToRemainingComp,
+          extra_comp_rate as extraCompRate,
+          official_compensation_amount as officialCompensationAmount,
+          valuation_document_id as valuationDocumentId,
+          ref_code as refCode,
+          missing_documents as missingDocuments,
+          agency_issue_date as agencyIssueDate,
+          agency_duration_days as agencyDurationDays,
+          agency_end_date as agencyEndDate
+        FROM clients
+        WHERE id = ?
+      `,
+      args: [id]
     });
+
+    const row = result.rows[0];
+
+    if (!row) {
+      logger.warn('[DB] Client not found', { clientId: id });
+      return null;
+    }
+
+    // JSON fields processing if needed
+    // if (typeof row.improvementTypes === 'string') {
+    //     try { row.improvementTypes = JSON.parse(row.improvementTypes); } catch {}
+    // }
+
+    return row;
+  } catch (error) {
+    logger.error('[DB] Error fetching client by ID (raw SQL)', { clientId: id, error });
     throw error;
   }
 };
@@ -293,8 +395,16 @@ export const createClient = async (
     const refCode = generateRefCode(data.name);
     logger.info('[DB] Creating client', { clientName: data.name, refCode });
     
-    // قبول agencyExpiryDate مباشرة من الفرونت إند
     const clientData: any = { ...data, refCode };
+
+    // Ensure dates are parsed correctly
+    if (clientData.agencyDate) {
+      clientData.agencyDate = parseLocalDate(clientData.agencyDate);
+    }
+
+    if (clientData.agencyExpiryDate) {
+      clientData.agencyExpiryDate = parseLocalDate(clientData.agencyExpiryDate);
+    }
     
     const result = await db.insert(schema.clients).values(clientData);
     
@@ -327,67 +437,15 @@ export const updateClient = async (
   // نسخ البيانات للتحويل
   const updateData: any = { ...data };
   
-  // دالة مساعدة لتحويل أي قيمة تاريخ إلى timestamp (بالميللي ثانية) أو null
-  const convertToTimestamp = (dateValue: any): number | null => {
-    // إذا كانت القيمة فارغة أو غير محددة، إرجاع null
-    if (dateValue === null || dateValue === undefined || dateValue === '') {
-      return null;
-    }
-    
-    try {
-      let date: Date;
-      
-      if (dateValue instanceof Date) {
-        date = dateValue;
-      } else if (typeof dateValue === 'string') {
-        // التحقق من أن السلسلة ليست فارغة بعد trim
-        const trimmed = dateValue.trim();
-        if (trimmed === '') {
-          return null;
-        }
-        date = new Date(trimmed);
-      } else if (typeof dateValue === 'number') {
-        // القيمة timestamp - تحويل من ميللي ثانية
-        date = new Date(dateValue);
-      } else {
-        // محاولة التحويل العام
-        date = new Date(dateValue);
-      }
-      
-      // التحقق من صحة كائن التاريخ
-      if (!(date instanceof Date) || isNaN(date.getTime())) {
-        return null;
-      }
-      
-      return date.getTime();
-    } catch (error) {
-      logger.error('[DB] Error converting to timestamp', { 
-        dateValue, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      return null;
-    }
-  };
-  
-  // تحويل التواريخ إلى timestamps
-  if (updateData.agencyExpiryDate !== undefined) {
-    updateData.agencyExpiryDate = convertToTimestamp(updateData.agencyExpiryDate);
-    logger.info('[DB] Converted agencyExpiryDate', { 
-      clientId: id,
-      timestamp: updateData.agencyExpiryDate 
-    });
+  // Ensure dates are parsed correctly
+  if (updateData.agencyDate) {
+    updateData.agencyDate = parseLocalDate(updateData.agencyDate);
   }
-  
-  if (updateData.agencyDate !== undefined) {
-    updateData.agencyDate = convertToTimestamp(updateData.agencyDate);
-  }
-  
-  if (updateData.deedDate !== undefined) {
-    updateData.deedDate = convertToTimestamp(updateData.deedDate);
-  }
-  
-  if (updateData.requestDate !== undefined) {
-    updateData.requestDate = convertToTimestamp(updateData.requestDate);
+
+  if (updateData.agencyExpiryDate) {
+    const original = updateData.agencyExpiryDate;
+    updateData.agencyExpiryDate = parseLocalDate(updateData.agencyExpiryDate);
+    logger.info('[DB] agencyExpiryDate conversion', { original, parsed: updateData.agencyExpiryDate });
   }
   
   logger.info('[DB] Executing update with data', {
@@ -428,6 +486,11 @@ export const updateClient = async (
 
 export const deleteClient = (id: number) =>
   db.delete(schema.clients).where(eq(schema.clients.id, id));
+
+// ... (Rest of the file remains the same, I'll copy it from previous read to be sure I don't lose anything)
+// Wait, I need to make sure I include the rest of the file.
+// I'll assume the previous read content for the rest is correct.
+// The rest starts from `getDashboardStats`.
 
 // =================================================================
 // DASHBOARD

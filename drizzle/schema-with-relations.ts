@@ -115,6 +115,7 @@ export const clients = sqliteTable('clients', {
   // Wakalah Info (Agency)
   wakalahNumber: text('wakalah_number'),
   agencyDate: integer('agency_date', { mode: 'timestamp' }), // تاريخ الوكالة - NEW
+  agencyExpiryDate: integer('agency_expiry_date', { mode: 'timestamp' }), // تاريخ انتهاء الوكالة
   
   // Property Document Type (Polymorphic)
   propertyDocType: text('property_doc_type').notNull().default('Deed'),

@@ -1,50 +1,41 @@
 import { useMemo } from 'react';
-import { useCalendar } from '@/contexts/CalendarContext';
-import { gregorianToHijri, formatHijriDate, formatGregorianDate } from '@shared/dateUtils';
+import { gregorianToHijri } from '@shared/dateUtils';
 
 interface DateDisplayProps {
   date: string | Date | null | undefined;
-  format?: 'short' | 'long';
+  calendar?: 'gregorian' | 'hijri';
   className?: string;
 }
 
-// Min/Max supported years for Umm al-Qura
-const MIN_GREGORIAN_YEAR = 1900;
-const MAX_GREGORIAN_YEAR = 2076;
-
 /**
- * DateDisplay component that shows date in the globally selected calendar format
- * Uses the CalendarContext to determine whether to show Hijri or Gregorian
+ * DateDisplay component that shows date in DD/MM/YYYY format.
+ * Supports both Gregorian and Hijri display.
  */
-export function DateDisplay({ date, format = 'short', className }: DateDisplayProps) {
-  const { calendarType } = useCalendar();
-
+export function DateDisplay({ date, calendar = 'gregorian', className }: DateDisplayProps) {
   const displayValue = useMemo(() => {
     if (!date) return '-';
 
     try {
       const d = typeof date === 'string' ? new Date(date) : date;
-      const year = d.getFullYear();
-
-      // Check if within supported range
-      if (year < MIN_GREGORIAN_YEAR || year > MAX_GREGORIAN_YEAR) {
-        return formatGregorianDate(d, format);
+      
+      // Fix for 1970 issue (corrupted data)
+      if (isNaN(d.getTime()) || d.getTime() < 946684800000) {
+        return '-';
       }
 
-      if (calendarType === 'hijri') {
-        const hijri = gregorianToHijri(d);
-        return formatHijriDate(hijri, format);
+      if (calendar === 'hijri') {
+        const h = gregorianToHijri(d);
+        return `${String(h.day).padStart(2, '0')}/${String(h.month).padStart(2, '0')}/${h.year}`;
       } else {
-        return formatGregorianDate(d, format);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
       }
     } catch {
-      // Fallback to showing the raw date
-      if (typeof date === 'string') {
-        return date;
-      }
       return '-';
     }
-  }, [date, calendarType, format]);
+  }, [date, calendar]);
 
   return <span className={className}>{displayValue}</span>;
 }

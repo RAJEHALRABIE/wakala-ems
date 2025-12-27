@@ -20,7 +20,6 @@ import {
   FolderOpen
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { CalendarToggle } from "@/components/CalendarToggle";
 
 // Bottom navigation items (5 main items)
 const bottomNavItems = [
@@ -130,7 +129,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="font-bold text-lg">وكالة EMS</h1>
             <p className="text-xs text-muted-foreground">إدارة التعويضات</p>
           </div>
-          <CalendarToggle showLabel={true} />
         </div>
         <div className="flex-1 overflow-auto py-4">
           <NavContent />
@@ -164,7 +162,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="font-bold">وكالة EMS</span>
         </div>
         <div className="mr-auto">
-          <CalendarToggle showLabel={false} />
         </div>
       </header>
 

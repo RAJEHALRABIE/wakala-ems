@@ -123,6 +123,8 @@ export default function ClientForm() {
     { enabled: !!clientId }
   );
 
+  console.log('[ClientForm] client data from server', client);
+
   const { data: agents } = trpc.agents.list.useQuery();
   const utils = trpc.useUtils();
 
@@ -182,7 +184,7 @@ export default function ClientForm() {
         } catch {}
       }
     }
-  }, [client]);
+  }, [client, clientId]);
 
   const createMutation = trpc.clients.create.useMutation({
     onSuccess: (newClient) => {

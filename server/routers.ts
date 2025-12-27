@@ -257,10 +257,11 @@ export const appRouter = router({
         try {
           logger.info('Creating new client', { clientName: input.name });
           const data: any = { ...input };
-        if (input.deedDate) data.deedDate = input.deedDate;
+        if (input.deedDate) data.deedDate = parseLocalDate(input.deedDate);
         if (input.agencyDate) data.agencyDate = input.agencyDate;
         if (input.agencyExpiryDate) data.agencyExpiryDate = input.agencyExpiryDate;
-          if (input.requestDate) data.requestDate = parseLocalDate(input.requestDate);
+        if (input.decisionDate) data.decisionDate = parseLocalDate(input.decisionDate);
+        if (input.requestDate) data.requestDate = parseLocalDate(input.requestDate);
           
           // Extract coordinates from mapLink or surveyMapRef
           const mapUrl = input.mapLink || input.surveyMapRef;
@@ -343,6 +344,7 @@ export const appRouter = router({
         }
       }))
       .mutation(async ({ input }) => {
+        logger.info('[Router] RAW update input', { input });
         const { id, ...data } = input;
         const updateData: any = { ...data };
         logger.info('[Router] Client update input', { id, data });
@@ -355,19 +357,10 @@ export const appRouter = router({
           });
         }
         if (data.agencyDate !== undefined) {
-          updateData.agencyDate = data.agencyDate ? parseLocalDate(data.agencyDate) : null;
-          logger.info('[Router] Processed agencyDate', { 
-            original: data.agencyDate, 
-            parsed: updateData.agencyDate 
-          });
+          updateData.agencyDate = data.agencyDate;
         }
         if (data.agencyExpiryDate !== undefined) {
-          updateData.agencyExpiryDate = data.agencyExpiryDate ? parseLocalDate(data.agencyExpiryDate) : null;
-          logger.info('[Router] Processed agencyExpiryDate', { 
-            original: data.agencyExpiryDate, 
-            parsed: updateData.agencyExpiryDate,
-            parsedISO: updateData.agencyExpiryDate ? updateData.agencyExpiryDate.toISOString() : 'null'
-          });
+          updateData.agencyExpiryDate = data.agencyExpiryDate;
         }
         if (data.requestDate !== undefined) {
           updateData.requestDate = data.requestDate ? parseLocalDate(data.requestDate) : null;

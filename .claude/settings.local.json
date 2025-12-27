@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -ExecutionPolicy Bypass -File .diagnose-ga4.ps1)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\rajeh\\Desktop\\wakala-ems-new\\diagnose-ga4.ps1\")",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\rajeh\\Desktop\\wakala-ems-new\\diagnose-ga4-fixed.ps1\")",
+      "Bash(npm install)",
+      "Bash(pnpm install)",
+      "Bash(mv:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

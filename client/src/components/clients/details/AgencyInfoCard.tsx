@@ -22,11 +22,9 @@ export default function AgencyInfoCard({ client, agencyStatusInfo }: { client: a
         <div className="border-b border-blue-200/50 pb-2 last:border-0 last:pb-0">
             <div className="text-xs text-muted-foreground mb-1">تاريخ الإصدار</div>
             <div className="font-bold text-lg">
-              {client.agencyIssueDate ? (
-                <DateDisplay date={client.agencyIssueDate} format="short" />
-              ) : (client.agencyDate ? (
-                 <span dir="ltr" className="font-mono">{client.agencyDate.toString()}</span>
-              ) : "-")}
+              {client.agencyIssueDate || client.agencyDate ? (
+                <DateDisplay date={client.agencyIssueDate || client.agencyDate} />
+              ) : "-"}
             </div>
         </div>
 

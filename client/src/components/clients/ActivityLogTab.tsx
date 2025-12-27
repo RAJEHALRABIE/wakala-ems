@@ -170,7 +170,7 @@ export const ActivityLogTab: FC<ActivityLogTabProps> = ({ clientId }) => {
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       <span>
-                        {format(new Date(log.createdAt), "dd MMMM yyyy, h:mm a", { locale: ar })}
+                        {format(new Date(log.createdAt), "dd/MM/yyyy, h:mm a", { locale: ar })}
                       </span>
                     </div>
                   </div>
