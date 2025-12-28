@@ -15,11 +15,8 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const loginMutation = trpc.systemUsers.login.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("تم تسجيل الدخول بنجاح");
-      if (data.user.needsPasswordChange) {
-          toast.warning("يجب تغيير كلمة المرور الافتراضية لأمان حسابك", { duration: 6000 });
-      }
       window.location.href = "/"; // إعادة تحميل الصفحة لتحديث السياق
     },
     onError: (err) => {

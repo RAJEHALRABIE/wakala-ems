@@ -29,13 +29,10 @@ import ClientTrash from "./pages/ClientTrash";
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
   const { data: user, isLoading } = trpc.systemUsers.me.useQuery();
   const [, setLocation] = useLocation();
-  const [forcePwdChange, setForcePwdChange] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/login");
-    } else if (user?.needsPasswordChange) {
-      setForcePwdChange(true);
     }
   }, [user, isLoading, setLocation]);
 
@@ -52,16 +49,9 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   }
 
   return (
-    <>
-      <AppLayout>
-        <Component />
-      </AppLayout>
-      <PasswordChangeDialog 
-        open={forcePwdChange} 
-        onOpenChange={(open) => !open && toast.error("J,( *:JJ1 CDE) 'DE1H1 DDE*'(9)")} 
-        mode="self" 
-      />
-    </>
+    <AppLayout>
+      <Component />
+    </AppLayout>
   );
 }
 

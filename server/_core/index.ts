@@ -62,10 +62,16 @@ export async function startServer(): Promise<void> {
   // Client Document Routes (Download/Preview)
   registerClientDocumentRoutes(app);
   
-  // Seed default admin user
+  // Client Document Routes (Download/Preview)
+  registerClientDocumentRoutes(app);
+  
+  // 1. Synchronize schema (ensure all columns exist)
+  await db.ensureSchemaSync();
+  
+  // 2. Seed default admin user
   await db.seedDefaultAdmin();
   
-  logger.info("🔍 Step 2.5: tRPC & Client Document routes registered");
+  logger.info("🔍 Step 2.5: Schema synced, Admin seeded, tRPC & Client Document routes registered");
   
   // ============================================
   // 🔧 PHASE 5: Static Files / Vite Integration
