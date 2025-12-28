@@ -28,7 +28,7 @@ interface ClientStatusDashboardProps {
   showDescription?: boolean;
 }
 
-export function ClientStatusDashboard({
+function ClientStatusDashboard({
   onStatusFilter,
   selectedStatus: externalSelectedStatus,
   showDescription = false,
@@ -214,30 +214,18 @@ export function ClientStatusDashboard({
                           }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div 
-                            className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 shadow-sm"
-                            style={{ 
-                              backgroundColor: `${status.color}15`,
-                              boxShadow: `0 2px 6px ${status.color}30`
-                            }}
+                          <span 
+                            className="text-xl font-bold"
+                            style={{ color: status.color }}
                           >
-                            <span className="text-xl">{getStatusIcon(status.key)}</span>
-                          </div>
+                            {count}
+                          </span>
                         </div>
                       </div>
                       
-                      {/* العدد واسم الحالة في صف واحد */}
-                      <div className="space-y-1">
-                        <div 
-                          className="text-2xl font-bold transition-colors leading-none"
-                          style={{ color: status.color }}
-                        >
-                          {count}
-                        </div>
-                        
-                        <div className="text-xs font-medium text-foreground line-clamp-2 h-8 flex items-center justify-center">
-                          {status.name}
-                        </div>
+                      {/* اسم الحالة */}
+                      <div className="text-xs font-medium text-muted-foreground truncate">
+                        {status.name}
                       </div>
                       
                       {/* النسبة المئوية */}
@@ -451,3 +439,7 @@ export function DashboardStatusOverview() {
     </div>
   );
 }
+
+// ✅ إضافة كلا النوعين من التصدير للتوافق الكامل
+export { ClientStatusDashboard };
+export default ClientStatusDashboard;
