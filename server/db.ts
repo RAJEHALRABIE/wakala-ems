@@ -348,7 +348,20 @@ export const getClientDocuments = (clientId: number) => db.query.clientDocuments
 export const createClientDocument = (data: InsertClientDocument) => db.insert(schema.clientDocuments).values(data);
 export const deleteClientDocument = (id: number) => db.delete(schema.clientDocuments).where(eq(schema.clientDocuments.id, id));
 
-export const getClientActivityLogs = (clientId: number) => db.query.clientActivityLog.findMany({ where: eq(schema.clientActivityLog.clientId, clientId), orderBy: [desc(schema.clientActivityLog.createdAt)], with: { client: true, performedByUser: true } });
+// =================================================================
+// LOGGING & ACTIVITY
+// =================================================================
+export const insertClientActivityLog = (data: InsertClientActivityLog) => 
+  db.insert(schema.clientActivityLog).values(data);
+
+export const getClientActivityLogs = (clientId: number, limit = 50) => 
+  db.query.clientActivityLog.findMany({ 
+    where: eq(schema.clientActivityLog.clientId, clientId), 
+    orderBy: [desc(schema.clientActivityLog.createdAt)], 
+    limit,
+    with: { client: true, performedByUser: true } 
+  });
+
 export const getClientNotes = (clientId: number) => db.query.clientNotes.findMany({ where: eq(schema.clientNotes.clientId, clientId), orderBy: [desc(schema.clientNotes.createdAt)], with: { client: true, createdByUser: true } });
 
 export const getSystemUserByUsername = (username: string) => db.query.systemUsers.findFirst({ where: eq(schema.systemUsers.username, username) });
