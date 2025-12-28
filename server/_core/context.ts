@@ -22,7 +22,11 @@ export async function createContext(
         if (session && session.expiresAt > new Date() && session.user) {
           const { passwordHash, ...safeUser } = session.user;
           user = safeUser;
+        } else {
+            console.log('[Context] Invalid or expired session token:', token);
         }
+      } else {
+          // console.log('[Context] No session_token found in cookies');
       }
     }
   } catch (error) {

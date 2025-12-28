@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./static";
@@ -45,7 +44,6 @@ export async function startServer(): Promise<void> {
   // 🔧 PHASE 4: Routes Configuration
   // المرحلة 4: إعداد المسارات
   // ============================================
-  registerOAuthRoutes(app);
   
   app.get("/health", (_req, res) => {
     res.status(200).send("OK");
@@ -63,7 +61,7 @@ export async function startServer(): Promise<void> {
   // Client Document Routes (Download/Preview)
   registerClientDocumentRoutes(app);
   
-  logger.info("🔍 Step 2.5: OAuth, tRPC & Client Document routes registered");
+  logger.info("🔍 Step 2.5: tRPC & Client Document routes registered");
   
   // ============================================
   // 🔧 PHASE 5: Static Files / Vite Integration
