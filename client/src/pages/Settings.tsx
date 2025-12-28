@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Users, MessageCircle, Download, Lock, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Users, MessageCircle, Download, Lock, Loader2, Shield } from "lucide-react";
 import { DualDatePicker } from "@/components/DualDatePicker";
 import { DateDisplay } from "@/components/DateDisplay";
 import * as XLSX from "xlsx";
+import UsersTab from "@/components/settings/UsersTab";
 
 export default function Settings() {
   const [masterKey, setMasterKey] = useState("");
@@ -178,6 +179,10 @@ export default function Settings() {
             <Users className="h-4 w-4" />
             الوكلاء
           </TabsTrigger>
+          <TabsTrigger value="users" className="gap-2">
+            <Shield className="h-4 w-4" />
+            المستخدمين
+          </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <MessageCircle className="h-4 w-4" />
             قوالب واتساب
@@ -323,6 +328,10 @@ export default function Settings() {
         </TabsContent>
 
         {/* Export Tab */}
+        <TabsContent value="users">
+          <UsersTab />
+        </TabsContent>
+
         <TabsContent value="export">
           <Card>
             <CardHeader>

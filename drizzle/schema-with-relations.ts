@@ -2,24 +2,6 @@ import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql, relations } from 'drizzle-orm';
 
 /**
- * Core user table backing auth flow (for OAuth/OpenID).
- */
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  openId: text('openId').notNull().unique(),
-  name: text('name'),
-  email: text('email'),
-  loginMethod: text('loginMethod'),
-  role: text('role').notNull().default('user'),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  lastSignedIn: integer('lastSignedIn', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
-/**
  * System Users table - إدارة المستخدمين الداخليين (للتحقق بكلمة مرور)
  */
 export const systemUsers = sqliteTable('system_users', {
@@ -27,11 +9,13 @@ export const systemUsers = sqliteTable('system_users', {
   name: text('name').notNull(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: text('role').notNull().default('user'),
+  role: text('role').notNull().default('user'), // 'admin', 'agent', 'viewer'
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: integer('last_login_at', { mode: 'timestamp' }),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  phone: text('phone'),
+  email: text('email'),
 });
 
 export type SystemUser = typeof systemUsers.$inferSelect;
@@ -96,8 +80,6 @@ export type ExpropriationType = typeof EXPROPRIATION_TYPES[number];
 
 /**
  * Clients table - العملاء
- * Updated: Removed completion_percentage, agency_type
- * Added: agency_date, property_document_type, request_number, request_date, property_description, city, map_link
  */
 export const clients = sqliteTable('clients', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -114,8 +96,8 @@ export const clients = sqliteTable('clients', {
   
   // Wakalah Info (Agency)
   wakalahNumber: text('wakalah_number'),
-  agencyDate: integer('agency_date', { mode: 'timestamp' }), // تاريخ الوكالة - NEW
-  agencyExpiryDate: integer('agency_expiry_date', { mode: 'timestamp' }), // تاريخ انتهاء الوكالة
+  agencyDate: integer('agency_date', { mode: 'timestamp' }),
+  agencyExpiryDate: integer('agency_expiry_date', { mode: 'timestamp' }),
   
   // Property Document Type (Polymorphic)
   propertyDocType: text('property_doc_type').notNull().default('Deed'),
@@ -177,6 +159,10 @@ export const clients = sqliteTable('clients', {
   
   // Missing Documents
   missingDocuments: text('missing_documents'),
+  
+  // Soft Delete
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+  deletedBy: integer('deleted_by'),
 });
 
 export type Client = typeof clients.$inferSelect;
@@ -197,7 +183,6 @@ export type InsertSetting = typeof settings.$inferInsert;
 
 /**
  * Document Types table - أنواع المستندات المرجعية
- * 11 نوع مستند مرتبطة بـ 3 فئات
  */
 export const documentTypes = sqliteTable('document_types', {
   id: text('id').primaryKey(),
@@ -212,7 +197,6 @@ export type InsertDocumentType = typeof documentTypes.$inferInsert;
 
 /**
  * Client Documents table - مستندات العملاء
- * رابط بين العميل ونوع المستند، مع معلومات الرفع
  */
 export const clientDocuments = sqliteTable('client_documents', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -292,6 +276,17 @@ export const clientNotes = sqliteTable('client_notes', {
 export type ClientNote = typeof clientNotes.$inferSelect;
 export type InsertClientNote = typeof clientNotes.$inferInsert;
 
+// Sessions Table
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(), // Token (randomUUID)
+  userId: integer('user_id').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type Session = typeof sessions.$inferSelect;
+export type InsertSession = typeof sessions.$inferInsert;
+
 // Relations
 export const agentsRelations = relations(agents, ({ many }) => ({
   clients: many(clients),
@@ -304,6 +299,10 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   }),
   documents: many(documents),
   clientDocuments: many(clientDocuments),
+  deletedByUser: one(systemUsers, {
+    fields: [clients.deletedBy],
+    references: [systemUsers.id],
+  }),
 }));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
@@ -322,9 +321,9 @@ export const clientDocumentsRelations = relations(clientDocuments, ({ one }) => 
     fields: [clientDocuments.documentTypeId],
     references: [documentTypes.id],
   }),
-  uploadedByUser: one(users, {
+  uploadedByUser: one(systemUsers, {
     fields: [clientDocuments.uploadedBy],
-    references: [users.id],
+    references: [systemUsers.id],
   }),
 }));
 
@@ -338,9 +337,9 @@ export const clientActivityLogRelations = relations(clientActivityLog, ({ one })
     fields: [clientActivityLog.clientId],
     references: [clients.id],
   }),
-  performedByUser: one(users, {
+  performedByUser: one(systemUsers, {
     fields: [clientActivityLog.performedByUserId],
-    references: [users.id],
+    references: [systemUsers.id],
   }),
 }));
 
@@ -350,16 +349,22 @@ export const clientNotesRelations = relations(clientNotes, ({ one }) => ({
     fields: [clientNotes.clientId],
     references: [clients.id],
   }),
-  createdByUser: one(users, {
+  createdByUser: one(systemUsers, {
     fields: [clientNotes.createdBy],
-    references: [users.id],
+    references: [systemUsers.id],
+  }),
+}));
+
+// Session relations
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(systemUsers, {
+    fields: [sessions.userId],
+    references: [systemUsers.id],
   }),
 }));
 
 // Export schema with relations for Drizzle
-// IMPORTANT: Must include both tables AND relations for relational queries to work
 export const schema = {
-  users,
   systemUsers,
   agents,
   clients,
@@ -369,7 +374,8 @@ export const schema = {
   clientDocuments,
   clientActivityLog,
   clientNotes,
-  // Relations must be included in schema for `with` clause to work
+  sessions,
+  // Relations
   agentsRelations,
   clientsRelations,
   documentsRelations,
@@ -377,4 +383,5 @@ export const schema = {
   documentTypesRelations,
   clientActivityLogRelations,
   clientNotesRelations,
+  sessionsRelations,
 };

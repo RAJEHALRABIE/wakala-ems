@@ -123,8 +123,11 @@ export default function ClientList() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   
   const { sounds } = useSoundEffects();
+  const utils = trpc.useUtils();
   
+  const { data: user } = trpc.systemUsers.me.useQuery();
   const { data: clients, isLoading, refetch } = trpc.clients.list.useQuery();
+
   const { data: searchResults } = trpc.clients.search.useQuery(
     { query: search },
     { enabled: search.length > 2 }
@@ -149,13 +152,6 @@ export default function ClientList() {
 
   const formatNumber = (num: number | null) => num ? num.toLocaleString("en-US") : "-";
   const formatCurrency = (num: number | null) => num ? `${num.toLocaleString("en-US")} ريال` : "-";
-
-  // نسخ رقم الهاتف
-  const copyPhone = (phone: string) => {
-    navigator.clipboard.writeText(phone);
-    sounds.success();
-    toast.success("تم نسخ رقم الهاتف");
-  };
 
   const formatPhoneForWhatsApp = (phone: string) => {
     if (!phone) return "";
@@ -376,16 +372,19 @@ export default function ClientList() {
                 عرض التفاصيل
               </Button>
             </Link>
-            <Link href={`/clients/${client.id}/edit`}>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-10 w-10 rounded-xl p-0 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:border-primary"
-                onClick={() => sounds.click()}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            </Link>
+            {user?.role !== 'viewer' && (
+              <Link href={`/clients/${client.id}/edit`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-10 w-10 rounded-xl p-0 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                  onClick={() => sounds.click()}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+
             <Link href={`/clients/${client.id}/archive`}>
               <Button 
                 variant="ghost" 
@@ -538,9 +537,11 @@ const calculateFinancials = (client: any) => {
                   <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                     <Link href={`/clients/${client.id}`}><Eye className="h-4 w-4" /></Link>
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                    <Link href={`/clients/${client.id}/edit`}><Edit className="h-4 w-4" /></Link>
-                  </Button>
+                  {user?.role !== 'viewer' && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                      <Link href={`/clients/${client.id}/edit`}><Edit className="h-4 w-4" /></Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -604,17 +605,19 @@ const calculateFinancials = (client: any) => {
           >
             <RefreshCw className="h-5 w-5" />
           </Button>
-          <Link href="/clients/new">
-            <Button 
-              size="lg" 
-              className="h-11 rounded-xl shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 group"
-              onClick={() => sounds.click()}
-            >
-              <Plus className="ml-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-              إضافة عميل جديد
-              <Zap className="h-4 w-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Button>
-          </Link>
+          {user?.role !== 'viewer' && (
+            <Link href="/clients/new">
+              <Button 
+                size="lg" 
+                className="h-11 rounded-xl shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 group"
+                onClick={() => sounds.click()}
+              >
+                <Plus className="ml-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
+                إضافة عميل جديد
+                <Zap className="h-4 w-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

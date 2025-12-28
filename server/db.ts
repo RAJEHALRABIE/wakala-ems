@@ -16,6 +16,26 @@ const libsqlClient = createLibSQLClient({
 // تهيئة قاعدة البيانات وإنشاء الجداول إذا لزم الأمر
 async function initializeDatabase() {
   try {
+    // التحقق من الأعمدة المفقودة في جدول system_users
+    try {
+        await libsqlClient.execute("ALTER TABLE system_users ADD COLUMN phone TEXT");
+        logger.info("[DB] Added phone column to system_users");
+    } catch(e) {}
+    try {
+        await libsqlClient.execute("ALTER TABLE system_users ADD COLUMN email TEXT");
+        logger.info("[DB] Added email column to system_users");
+    } catch(e) {}
+
+    // التحقق من الأعمدة المفقودة في جدول clients
+    try {
+        await libsqlClient.execute("ALTER TABLE clients ADD COLUMN deleted_at DATETIME");
+        logger.info("[DB] Added deleted_at column to clients");
+    } catch(e) {}
+    try {
+        await libsqlClient.execute("ALTER TABLE clients ADD COLUMN deleted_by INTEGER");
+        logger.info("[DB] Added deleted_by column to clients");
+    } catch(e) {}
+
     await libsqlClient.batch(
       [
         // USERS
@@ -29,6 +49,21 @@ async function initializeDatabase() {
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
           updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
           lastSignedIn DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
+
+        // SYSTEM USERS
+        `CREATE TABLE IF NOT EXISTS system_users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT DEFAULT 'user' NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+          last_login_at DATETIME,
+          is_active INTEGER DEFAULT 1,
+          phone TEXT,
+          email TEXT
         )`,
 
         // AGENTS
@@ -118,7 +153,11 @@ async function initializeDatabase() {
           ref_code TEXT,
 
           -- Missing Documents
-          missing_documents TEXT
+          missing_documents TEXT,
+
+          -- Soft Delete
+          deleted_at DATETIME,
+          deleted_by INTEGER
         )`,
 
         // SETTINGS
@@ -162,6 +201,14 @@ async function initializeDatabase() {
           client_id INTEGER NOT NULL,
           note TEXT NOT NULL,
           created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
+
+        // SESSIONS
+        `CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          expires_at DATETIME NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
         )`,
       ],
@@ -267,10 +314,27 @@ const generateRefCode = (name: string): string => {
   return `${namePart}${randomPart}`;
 };
 
-export const getAllClients = () =>
-  db.query.clients.findMany({
+export const getAllClients = (includeDeleted = false) => {
+  if (includeDeleted) {
+    return db.query.clients.findMany({
+      orderBy: [desc(schema.clients.createdAt)],
+    });
+  }
+  return db.query.clients.findMany({
+    where: sql`${schema.clients.deletedAt} IS NULL`,
     orderBy: [desc(schema.clients.createdAt)],
   });
+};
+
+export const getDeletedClients = () => {
+  return db.query.clients.findMany({
+    where: sql`${schema.clients.deletedAt} IS NOT NULL`,
+    orderBy: [desc(schema.clients.deletedAt)],
+    with: {
+        agent: true,
+    }
+  });
+};
 
 export const getClientById = async (id: number) => {
   try {
@@ -282,6 +346,7 @@ export const getClientById = async (id: number) => {
           id,
           created_at as createdAt,
           updated_at as updatedAt,
+          deleted_at as deletedAt,
           name,
           phone,
           id_number as idNumber,
@@ -326,7 +391,9 @@ export const getClientById = async (id: number) => {
           missing_documents as missingDocuments,
           agency_issue_date as agencyIssueDate,
           agency_duration_days as agencyDurationDays,
-          agency_end_date as agencyEndDate
+          agency_end_date as agencyEndDate,
+          deleted_at as deletedAt,
+          deleted_by as deletedBy
         FROM clients
         WHERE id = ?
       `,
@@ -484,13 +551,23 @@ export const updateClient = async (
   }
 }
 
+export const softDeleteClient = (id: number, userId: number) =>
+  db.update(schema.clients)
+    .set({ deletedAt: new Date(), deletedBy: userId })
+    .where(eq(schema.clients.id, id));
+
+export const restoreClient = (id: number) =>
+  db.update(schema.clients)
+    .set({ deletedAt: null, deletedBy: null })
+    .where(eq(schema.clients.id, id));
+
+export const permanentDeleteClient = (id: number) =>
+  db.delete(schema.clients).where(eq(schema.clients.id, id));
+
 export const deleteClient = (id: number) =>
   db.delete(schema.clients).where(eq(schema.clients.id, id));
 
-// ... (Rest of the file remains the same, I'll copy it from previous read to be sure I don't lose anything)
-// Wait, I need to make sure I include the rest of the file.
-// I'll assume the previous read content for the rest is correct.
-// The rest starts from `getDashboardStats`.
+// ... (Rest of the file remains the same)
 
 // =================================================================
 // DASHBOARD
@@ -699,6 +776,48 @@ export const deleteClientNote = (id: number) =>
 // =================================================================
 export const getUserByOpenId = (openId: string) =>
   db.query.users.findFirst({ where: eq(schema.users.openId, openId) });
+
+// =================================================================
+// SYSTEM USERS (Internal auth)
+// =================================================================
+export const getSystemUserByUsername = (username: string) =>
+  db.query.systemUsers.findFirst({
+    where: eq(schema.systemUsers.username, username),
+  });
+
+export const getSystemUserById = (id: number) =>
+  db.query.systemUsers.findFirst({
+    where: eq(schema.systemUsers.id, id),
+  });
+
+export const getAllSystemUsers = () =>
+  db.query.systemUsers.findMany({
+    orderBy: [desc(schema.systemUsers.createdAt)],
+  });
+
+export const createSystemUser = (data: any) =>
+  db.insert(schema.systemUsers).values(data);
+
+export const updateSystemUser = (id: number, data: any) =>
+  db.update(schema.systemUsers).set(data).where(eq(schema.systemUsers.id, id));
+
+export const deleteSystemUser = (id: number) =>
+  db.delete(schema.systemUsers).where(eq(schema.systemUsers.id, id));
+
+// =================================================================
+// SESSIONS
+// =================================================================
+export const createSession = (data: any) =>
+  db.insert(schema.sessions).values(data);
+
+export const getSession = (id: string) =>
+  db.query.sessions.findFirst({
+    where: eq(schema.sessions.id, id),
+    with: { user: true },
+  });
+
+export const deleteSession = (id: string) =>
+  db.delete(schema.sessions).where(eq(schema.sessions.id, id));
 
 export const upsertUser = (data: InsertUser) => {
   return db

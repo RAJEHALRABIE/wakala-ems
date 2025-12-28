@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard,
   Users,
@@ -17,9 +18,13 @@ import {
   MapPin,
   AppWindow,
   Home,
-  FolderOpen
+  FolderOpen,
+  UserCircle,
+  Trash2,
+  KeyRound
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PasswordChangeDialog } from "./settings/PasswordChangeDialog";
 
 // Bottom navigation items (5 main items)
 const bottomNavItems = [
@@ -45,17 +50,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const hasAccess = localStorage.getItem("wakala_access");
-    if (hasAccess !== "granted") {
-      setLocation("/login");
+  const { data: user } = trpc.systemUsers.me.useQuery();
+  const logoutMutation = trpc.systemUsers.logout.useMutation({
+    onSuccess: () => {
+      window.location.href = "/login";
     }
-  }, [setLocation]);
+  });
 
   const handleLogout = () => {
-    localStorage.removeItem("wakala_access");
-    setLocation("/login");
+    logoutMutation.mutate();
   };
 
   const isActive = (path: string) => {
@@ -68,6 +73,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <nav className="flex flex-col gap-1 p-2">
       {menuItems.map((item) => {
         const active = isActive(item.path);
+        // Only admin can see settings
+        if (item.path === "/settings" && user?.role !== 'admin') return null;
+
         return (
           <Link key={item.path} href={item.path}>
             <button
@@ -101,8 +109,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           الأرشيف
         </button>
       </Link>
+
+      {user?.role === 'admin' && (
+        <Link href="/clients/trash">
+          <button
+            onClick={() => setMobileOpen(false)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location === "/clients/trash"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Trash2 className="h-5 w-5" />
+            سلة المحذوفات
+          </button>
+        </Link>
+      )}
       
       <Separator className="my-2" />
+
+      <button
+        onClick={() => {
+          setMobileOpen(false);
+          setPasswordDialogOpen(true);
+        }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-accent text-foreground transition-colors"
+      >
+        <KeyRound className="h-5 w-5" />
+        تغيير كلمة المرور
+      </button>
       
       <button
         onClick={() => {
@@ -130,6 +165,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-muted-foreground">إدارة التعويضات</p>
           </div>
         </div>
+        
+        {/* User Profile Info */}
+        {user && (
+          <div className="p-4 border-b bg-muted/30">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-background rounded-full border">
+                <UserCircle className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">{user.name}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {user.role === 'admin' ? 'مدير النظام' : user.role === 'agent' ? 'وكيل معتمد' : 'مشاهد فقط'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-auto py-4">
           <NavContent />
         </div>
@@ -154,6 +207,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <X className="h-5 w-5" />
               </Button>
             </div>
+            
+            {/* Mobile User Info */}
+            {user && (
+              <div className="p-4 border-b bg-muted/30 flex items-center gap-3">
+                <UserCircle className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-bold">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
+                </div>
+              </div>
+            )}
+
             <NavContent />
           </SheetContent>
         </Sheet>
@@ -193,18 +258,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
+      {/* Password Change Dialog */}
+      <PasswordChangeDialog 
+        open={passwordDialogOpen} 
+        onOpenChange={setPasswordDialogOpen} 
+        mode="self" 
+      />
+
       {/* Logout Dialog */}
       <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>تسجيل الخروج</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من تسجيل الخروج؟
+              هل أنت متأكد من تسجيل الخروج؟ سيتم إغلاق الجلسة الحالية.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>تسجيل الخروج</AlertDialogAction>
+            <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              خروج
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

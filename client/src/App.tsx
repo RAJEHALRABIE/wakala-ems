@@ -1,10 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AppLayout from "./components/AppLayout";
+import { trpc } from "@/lib/trpc";
+import { useEffect } from "react";
 
 // Pages
 import Home from "./pages/Home";
@@ -21,8 +23,30 @@ import Archive from "./pages/Archive";
 import ClientArchive from "./pages/ClientArchive";
 import Analytics from "./pages/Analytics";
 import TrackOrder from "./pages/TrackOrder";
+import ClientTrash from "./pages/ClientTrash";
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
+  const { data: user, isLoading } = trpc.systemUsers.me.useQuery();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">,'1J 'D*-BB EF 'D5D'-J'*...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (adminOnly && user.role !== 'admin') {
+    return <div className="flex items-center justify-center min-h-screen">:J1 E51- DC ('DH5HD DG0G 'D5A-). G0G 'D5A-) DDE3$HDJF AB7.</div>;
+  }
+
   return (
     <AppLayout>
       <Component />
@@ -36,6 +60,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/track" component={TrackOrder} />
+      
+      {/* Protected Routes */}
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} />
       </Route>
@@ -44,6 +70,9 @@ function Router() {
       </Route>
       <Route path="/clients/new">
         <ProtectedRoute component={ClientForm} />
+      </Route>
+      <Route path="/clients/trash">
+        <ProtectedRoute component={ClientTrash} adminOnly />
       </Route>
       <Route path="/clients/:id/edit">
         <ProtectedRoute component={ClientForm} />
@@ -75,6 +104,7 @@ function Router() {
       <Route path="/apps">
         <ProtectedRoute component={Archive} />
       </Route>
+
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -83,14 +113,14 @@ function Router() {
 
 function App() {
   return (
-<ErrorBoundary>
-  <ThemeProvider defaultTheme="light">
-    <TooltipProvider>
-      <Toaster />
-      <Router />
-    </TooltipProvider>
-  </ThemeProvider>
-</ErrorBoundary>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="light">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -22,7 +22,6 @@ export default function ClientDetails() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const clientId = parseInt(params.id!);
-  const [masterKey, setMasterKey] = useState("");
 
   const isValidClientId = !isNaN(clientId) && clientId > 0;
 
@@ -33,7 +32,7 @@ export default function ClientDetails() {
 
   const deleteMutation = trpc.clients.delete.useMutation({
     onSuccess: () => {
-      toast.success("تم حذف العميل بنجاح");
+      toast.success("تم نقل العميل إلى سلة المحذوفات");
       setLocation("/clients");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -156,9 +155,11 @@ export default function ClientDetails() {
       <ClientHeader 
         client={client}
         agencyStatusInfo={agencyStatusInfo}
-        masterKey={masterKey}
-        setMasterKey={setMasterKey}
-        onDelete={() => deleteMutation.mutate({ id: client.id, masterKey })}
+        onDelete={() => {
+          if (window.confirm("هل أنت متأكد من نقل هذا العميل إلى سلة المحذوفات؟")) {
+            deleteMutation.mutate({ id: client.id });
+          }
+        }}
         setLocation={setLocation}
       />
 
