@@ -844,15 +844,26 @@ export async function seedDefaultAdmin() {
     const users = await getAllSystemUsers();
     if (users.length === 0) {
       logger.info("[DB] No system users found. Seeding default admin...");
-      const passwordHash = await bcrypt.hash("admin123", 10);
+      
+      const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+      const isDefault = !process.env.ADMIN_PASSWORD;
+      
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
       await createSystemUser({
         name: "مدير النظام",
         username: "admin",
         passwordHash,
         role: "admin",
         isActive: true,
+        needsPasswordChange: isDefault, // Force change if using default
       });
-      logger.info("✅ [DB] Default admin user created (admin / admin123)");
+      
+      if (isDefault) {
+        logger.warn("⚠️ [DB] Default admin user created with INSECURE password 'admin123'");
+        logger.warn("💡 [DB] Set ADMIN_PASSWORD environment variable to secure your installation.");
+      } else {
+        logger.info("✅ [DB] Default admin user created with password from environment.");
+      }
     }
   } catch (error) {
     logger.error("[DB] Seeding failed:", { error });

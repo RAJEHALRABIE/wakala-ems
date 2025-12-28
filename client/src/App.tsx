@@ -2,11 +2,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
+import { PasswordChangeDialog } from "./components/settings/PasswordChangeDialog";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AppLayout from "./components/AppLayout";
 import { trpc } from "@/lib/trpc";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Pages
 import Home from "./pages/Home";
@@ -28,10 +29,13 @@ import ClientTrash from "./pages/ClientTrash";
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
   const { data: user, isLoading } = trpc.systemUsers.me.useQuery();
   const [, setLocation] = useLocation();
+  const [forcePwdChange, setForcePwdChange] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/login");
+    } else if (user?.needsPasswordChange) {
+      setForcePwdChange(true);
     }
   }, [user, isLoading, setLocation]);
 
@@ -48,9 +52,16 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   }
 
   return (
-    <AppLayout>
-      <Component />
-    </AppLayout>
+    <>
+      <AppLayout>
+        <Component />
+      </AppLayout>
+      <PasswordChangeDialog 
+        open={forcePwdChange} 
+        onOpenChange={(open) => !open && toast.error("J,( *:JJ1 CDE) 'DE1H1 DDE*'(9)")} 
+        mode="self" 
+      />
+    </>
   );
 }
 

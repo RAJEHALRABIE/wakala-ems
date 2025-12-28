@@ -16,6 +16,7 @@ export const systemUsers = sqliteTable('system_users', {
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   phone: text('phone'),
   email: text('email'),
+  needsPasswordChange: integer('needs_password_change', { mode: 'boolean' }).default(false),
 });
 
 export type SystemUser = typeof systemUsers.$inferSelect;

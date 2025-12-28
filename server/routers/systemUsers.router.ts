@@ -55,7 +55,16 @@ export const systemUsersRouter = router({
       await db.updateSystemUser(user.id, { lastLoginAt: new Date() });
 
       ctx.res.setHeader('Set-Cookie', `session_token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`);
-      return { success: true, user: { id: user.id, name: user.name, username: user.username, role: user.role } };
+      return { 
+        success: true, 
+        user: { 
+          id: user.id, 
+          name: user.name, 
+          username: user.username, 
+          role: user.role,
+          needsPasswordChange: !!user.needsPasswordChange 
+        } 
+      };
     }),
 
   logout: publicProcedure.mutation(async ({ ctx }) => {
@@ -136,7 +145,11 @@ export const systemUsersRouter = router({
       }
 
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
-      await db.updateSystemUser(ctx.user.id, { passwordHash, updatedAt: new Date() });
+      await db.updateSystemUser(ctx.user.id, { 
+        passwordHash, 
+        needsPasswordChange: false, 
+        updatedAt: new Date() 
+      });
       return { success: true };
     }),
 
