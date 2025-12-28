@@ -54,15 +54,29 @@ export const systemUsersRouter = router({
       await db.createSession({ id: token, userId: user.id, expiresAt });
       await db.updateSystemUser(user.id, { lastLoginAt: new Date() });
 
-      ctx.res.setHeader('Set-Cookie', `session_token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`);
+      // تعيين الكوكيز مع دعم HTTPS في بيئة الإنتاج
+      const isProd = process.env.NODE_ENV === 'production';
+      const cookieParts = [
+        `session_token=${token}`,
+        'HttpOnly',
+        'Path=/',
+        `Max-Age=${7 * 24 * 60 * 60}`,
+        isProd ? 'SameSite=None' : 'SameSite=Lax',
+      ];
+      
+      if (isProd) {
+        cookieParts.push('Secure');
+      }
+
+      ctx.res.setHeader('Set-Cookie', cookieParts.join('; '));
+
       return { 
         success: true, 
         user: { 
           id: user.id, 
           name: user.name, 
           username: user.username, 
-          role: user.role,
-          needsPasswordChange: !!user.needsPasswordChange 
+          role: user.role
         } 
       };
     }),
@@ -147,7 +161,6 @@ export const systemUsersRouter = router({
       const passwordHash = await bcrypt.hash(input.newPassword, 10);
       await db.updateSystemUser(ctx.user.id, { 
         passwordHash, 
-        needsPasswordChange: false, 
         updatedAt: new Date() 
       });
       return { success: true };
