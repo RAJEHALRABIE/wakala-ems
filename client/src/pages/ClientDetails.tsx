@@ -11,12 +11,14 @@ import { Files, History } from "lucide-react";
 import { calculateFinancials } from "@shared/financials";
 
 // Sub-Components Imports
-import AgencyInfoCard from "@/components/clients/details/AgencyInfoCard";
-import ClientInfoTab from "@/components/clients/details/ClientInfoTab";
-import WhatsAppTab from "@/components/clients/details/WhatsAppTab";
-import ClientHeader from "@/components/clients/details/ClientHeader";
-import ClientDocumentsTab from "@/components/clients/ClientDocumentsTab";
-import ActivityLogTab from "@/components/clients/ActivityLogTab";
+import { 
+  AgencyInfoCard, 
+  ClientInfoTab, 
+  WhatsAppTab, 
+  ClientHeader, 
+  ClientDocumentsTab, 
+  ActivityLogTab 
+} from "@/components/clients";
 
 export default function ClientDetails() {
   const params = useParams<{ id: string }>();

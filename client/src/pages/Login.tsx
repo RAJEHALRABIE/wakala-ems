@@ -15,7 +15,10 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const loginMutation = trpc.systemUsers.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
       toast.success("تم تسجيل الدخول بنجاح");
       window.location.href = "/"; // إعادة تحميل الصفحة لتحديث السياق
     },

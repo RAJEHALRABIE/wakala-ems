@@ -16,11 +16,11 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
+  const isUnauthorized = error.message === UNAUTHED_ERR_MSG || error.data?.code === 'UNAUTHORIZED';
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  window.location.href = "/login";
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -44,10 +44,13 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        const token = localStorage.getItem('auth_token');
+        return token ? { authorization: `Bearer ${token}` } : {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),
-          credentials: "include",
         });
       },
     }),

@@ -54,24 +54,10 @@ export const systemUsersRouter = router({
       await db.createSession({ id: token, userId: user.id, expiresAt });
       await db.updateSystemUser(user.id, { lastLoginAt: new Date() });
 
-      // تعيين الكوكيز مع دعم HTTPS في بيئة الإنتاج
-      const isProd = process.env.NODE_ENV === 'production';
-      const cookieParts = [
-        `session_token=${token}`,
-        'HttpOnly',
-        'Path=/',
-        `Max-Age=${7 * 24 * 60 * 60}`,
-        isProd ? 'SameSite=None' : 'SameSite=Lax',
-      ];
-      
-      if (isProd) {
-        cookieParts.push('Secure');
-      }
-
-      ctx.res.setHeader('Set-Cookie', cookieParts.join('; '));
-
+      // لا نستخدم الكوكيز بعد الآن، نرسل التوكن في الاستجابة
       return { 
         success: true, 
+        token,
         user: { 
           id: user.id, 
           name: user.name, 
@@ -82,12 +68,13 @@ export const systemUsersRouter = router({
     }),
 
   logout: publicProcedure.mutation(async ({ ctx }) => {
-    const cookies = ctx.req.headers.cookie;
-    if (cookies) {
-      const token = cookies.split(';').find(c => c.trim().startsWith('session_token='))?.split('=')[1];
-      if (token) await db.deleteSession(token);
+    const authHeader = ctx.req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      if (token) {
+        await db.deleteSession(token);
+      }
     }
-    ctx.res.setHeader('Set-Cookie', `session_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
     return { success: true };
   }),
 

@@ -14,19 +14,18 @@ export async function createContext(
   let user: Omit<SystemUser, 'passwordHash'> | null = null;
 
   try {
-    const cookies = opts.req.headers.cookie;
-    if (cookies) {
-      const token = cookies.split(';').find(c => c.trim().startsWith('session_token='))?.split('=')[1];
+    // Read token from Authorization header
+    const authHeader = opts.req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
       if (token) {
         const session = await db.getSession(token);
         if (session && session.expiresAt > new Date() && session.user) {
           const { passwordHash, ...safeUser } = session.user;
           user = safeUser;
         } else {
-            console.log('[Context] Invalid or expired session token:', token);
+            console.log('[Context] Invalid or expired session token');
         }
-      } else {
-          // console.log('[Context] No session_token found in cookies');
       }
     }
   } catch (error) {
