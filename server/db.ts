@@ -7,6 +7,7 @@ import type { InsertAgent, InsertClient, InsertDocument, InsertUser, ClientStatu
 import type { InsertClientDocument, InsertClientActivityLog, InsertClientNote } from "../drizzle/schema-with-relations";
 import { createId } from "@paralleldrive/cuid2";
 import { logger } from "./logger";
+import bcrypt from "bcryptjs";
 
 // إنشاء اتصال بقاعدة بيانات SQLite محلي
 const libsqlClient = createLibSQLClient({
@@ -834,3 +835,26 @@ export const upsertUser = (data: InsertUser) => {
       },
     });
 };
+
+// =================================================================
+// SEEDING
+// =================================================================
+export async function seedDefaultAdmin() {
+  try {
+    const users = await getAllSystemUsers();
+    if (users.length === 0) {
+      logger.info("[DB] No system users found. Seeding default admin...");
+      const passwordHash = await bcrypt.hash("admin123", 10);
+      await createSystemUser({
+        name: "مدير النظام",
+        username: "admin",
+        passwordHash,
+        role: "admin",
+        isActive: true,
+      });
+      logger.info("✅ [DB] Default admin user created (admin / admin123)");
+    }
+  } catch (error) {
+    logger.error("[DB] Seeding failed:", { error });
+  }
+}

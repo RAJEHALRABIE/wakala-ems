@@ -8,6 +8,7 @@ import { createContext } from "./context";
 import { serveStatic } from "./static";
 import { logger } from "../logger";
 import { registerClientDocumentRoutes } from "../routers/clientDocuments.router";
+import * as db from "../db";
 
 export async function startServer(): Promise<void> {
   // ============================================
@@ -60,6 +61,9 @@ export async function startServer(): Promise<void> {
   
   // Client Document Routes (Download/Preview)
   registerClientDocumentRoutes(app);
+  
+  // Seed default admin user
+  await db.seedDefaultAdmin();
   
   logger.info("🔍 Step 2.5: tRPC & Client Document routes registered");
   
