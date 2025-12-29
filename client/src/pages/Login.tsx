@@ -7,22 +7,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Lock, User, AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const queryClient = useQueryClient();
 
   const loginMutation = trpc.systemUsers.login.useMutation({
-    onSuccess: (data) => {
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token);
-      }
+    onSuccess: async (data) => {
+      localStorage.setItem('auth_token', data.token);
+      await queryClient.invalidateQueries();
       toast.success("تم تسجيل الدخول بنجاح");
-      window.location.href = "/"; // إعادة تحميل الصفحة لتحديث السياق
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 100);
     },
     onError: (err) => {
+      console.error('[Login] Error:', err);
       setError(err.message || "بيانات الدخول غير صحيحة");
       toast.error(err.message || "بيانات الدخول غير صحيحة");
     },
@@ -60,7 +64,7 @@ export default function Login() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="username">اسم المستخدم</Label>
               <div className="relative">
@@ -92,12 +96,12 @@ export default function Login() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-12 text-lg font-bold bg-blue-600 hover:bg-blue-700 mt-2"
-              disabled={loginMutation.isLoading}
+              disabled={loginMutation.isPending}
             >
-              {loginMutation.isLoading ? "جاري التحقق..." : "دخول النظام"}
+              {loginMutation.isPending ? "جاري التحقق..." : "دخول النظام"}
             </Button>
           </form>
         </CardContent>

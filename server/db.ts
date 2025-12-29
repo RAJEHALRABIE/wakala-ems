@@ -1,7 +1,7 @@
 // استخدام libSQL (SQLite متوافق) مع drizzle-orm
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient as createLibSQLClient } from "@libsql/client";
-import { eq, desc, like, sql, inArray } from "drizzle-orm";
+import { eq, desc, like, sql, inArray, and } from "drizzle-orm";
 import { schema } from "../drizzle/schema-with-relations";
 import type { InsertAgent, InsertClient, InsertDocument, InsertUser, ClientStatus } from "../drizzle/schema.sqlite";
 import type { InsertClientDocument, InsertClientActivityLog, InsertClientNote } from "../drizzle/schema-with-relations";
@@ -162,6 +162,34 @@ async function initializeDatabase() {
           expires_at DATETIME NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
         )`,
+
+        // DOCUMENT TYPES
+        `CREATE TABLE IF NOT EXISTS document_types (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          category TEXT,
+          is_required INTEGER DEFAULT 0,
+          sort_order INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
+
+        // CLIENT DOCUMENTS
+        `CREATE TABLE IF NOT EXISTS client_documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          client_id INTEGER NOT NULL,
+          document_type_id TEXT NOT NULL,
+          label TEXT NOT NULL,
+          description TEXT,
+          file_url TEXT,
+          file_key TEXT,
+          file_size INTEGER,
+          mime_type TEXT,
+          uploaded_at INTEGER,
+          uploaded_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )`,
       ],
       "write",
     );
@@ -177,7 +205,7 @@ async function initializeDatabase() {
  */
 export async function ensureSchemaSync() {
   logger.info("[DB] Starting schema synchronization check...");
-  
+
   const addColumn = async (table: string, column: string, type: string) => {
     try {
       await libsqlClient.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
@@ -195,7 +223,7 @@ export async function ensureSchemaSync() {
   await addColumn("system_users", "email", "TEXT");
   await addColumn("system_users", "phone", "TEXT");
   await addColumn("system_users", "is_active", "INTEGER DEFAULT 1");
-  
+
   // 2. مزامنة جدول clients
   await addColumn("clients", "deleted_at", "DATETIME");
   await addColumn("clients", "deleted_by", "INTEGER");
@@ -344,26 +372,45 @@ export const getSetting = async (key: string): Promise<string | null> => {
 };
 export const setSetting = (key: string, value: string) => db.insert(schema.settings).values({ key, value }).onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() as any } });
 
+// =================================================================
+// CLIENT DOCUMENTS
+// =================================================================
 export const getClientDocuments = (clientId: number) => db.query.clientDocuments.findMany({ where: eq(schema.clientDocuments.clientId, clientId), orderBy: [desc(schema.clientDocuments.createdAt)], with: { documentType: true } });
+
+export const getClientDocumentByType = async (clientId: number, documentTypeId: number) => {
+  return db.query.clientDocuments.findFirst({
+    where: and(
+      eq(schema.clientDocuments.clientId, clientId),
+      eq(schema.clientDocuments.documentTypeId, documentTypeId)
+    ),
+    with: {
+      documentType: true
+    }
+  });
+};
+
 export const createClientDocument = (data: InsertClientDocument) => db.insert(schema.clientDocuments).values(data);
 export const deleteClientDocument = (id: number) => db.delete(schema.clientDocuments).where(eq(schema.clientDocuments.id, id));
 
 // =================================================================
 // LOGGING & ACTIVITY
 // =================================================================
-export const insertClientActivityLog = (data: InsertClientActivityLog) => 
+export const insertClientActivityLog = (data: InsertClientActivityLog) =>
   db.insert(schema.clientActivityLog).values(data);
 
-export const getClientActivityLogs = (clientId: number, limit = 50) => 
-  db.query.clientActivityLog.findMany({ 
-    where: eq(schema.clientActivityLog.clientId, clientId), 
-    orderBy: [desc(schema.clientActivityLog.createdAt)], 
+export const getClientActivityLogs = (clientId: number, limit = 50) =>
+  db.query.clientActivityLog.findMany({
+    where: eq(schema.clientActivityLog.clientId, clientId),
+    orderBy: [desc(schema.clientActivityLog.createdAt)],
     limit,
-    with: { client: true, performedByUser: true } 
+    with: { client: true, performedByUser: true }
   });
 
 export const getClientNotes = (clientId: number) => db.query.clientNotes.findMany({ where: eq(schema.clientNotes.clientId, clientId), orderBy: [desc(schema.clientNotes.createdAt)], with: { client: true, createdByUser: true } });
 
+// =================================================================
+// SYSTEM USERS & AUTH
+// =================================================================
 export const getSystemUserByUsername = (username: string) => db.query.systemUsers.findFirst({ where: eq(schema.systemUsers.username, username) });
 export const getSystemUserById = (id: number) => db.query.systemUsers.findFirst({ where: eq(schema.systemUsers.id, id) });
 export const getAllSystemUsers = () => db.query.systemUsers.findMany({ orderBy: [desc(schema.systemUsers.createdAt)] });
@@ -371,12 +418,18 @@ export const createSystemUser = (data: any) => db.insert(schema.systemUsers).val
 export const updateSystemUser = (id: number, data: any) => db.update(schema.systemUsers).set(data).where(eq(schema.systemUsers.id, id));
 export const deleteSystemUser = (id: number) => db.delete(schema.systemUsers).where(eq(schema.systemUsers.id, id));
 
+// =================================================================
+// SESSIONS
+// =================================================================
 export const createSession = (data: any) => db.insert(schema.sessions).values(data);
 export const getSession = (id: string) => db.query.sessions.findFirst({ where: eq(schema.sessions.id, id), with: { user: true } });
 export const deleteSession = (id: string) => db.delete(schema.sessions).where(eq(schema.sessions.id, id));
 
 export const upsertUser = (data: any) => db.insert(schema.systemUsers).values(data).onConflictDoUpdate({ target: schema.systemUsers.username, set: data });
 
+// =================================================================
+// SEED DEFAULT ADMIN
+// =================================================================
 export async function seedDefaultAdmin() {
   try {
     const users = await getAllSystemUsers();
