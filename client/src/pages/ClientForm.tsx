@@ -190,7 +190,7 @@ export default function ClientForm() {
     onSuccess: (newClient) => {
       toast.success("تم إضافة العميل بنجاح");
       utils.clients.list.invalidate();
-      setLocation(`/clients/${newClient.id}`);
+setLocation("/clients");
     },
     onError: (error) => {
       toast.error("حدث خطأ: " + error.message);
@@ -208,8 +208,81 @@ export default function ClientForm() {
     },
   });
 
+  // دالة التحقق من صحة البيانات (مرنة للبيانات القديمة)
+  const validateForm = () => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    // التحقق من رقم الهوية (للسجلات الجديدة فقط)
+    if (form.idNumber && form.idNumber.trim() !== "") {
+      const idNum = form.idNumber.trim();
+      
+      // إذا كان التعديل على سجل موجود، نتحقق فقط إذا تم تغيير الرقم
+      const isExistingData = isEdit && client?.idNumber === idNum;
+      
+      if (!isExistingData) {
+        // للبيانات الجديدة أو المعدلة: تطبيق الشروط الصارمة
+        if (!/^\d+$/.test(idNum)) {
+          errors.push("رقم الهوية يجب أن يتكون من أرقام فقط");
+        } else if (idNum.length !== 10) {
+          errors.push("رقم الهوية يجب أن يكون 10 أرقام");
+        }
+      } else if (idNum.length !== 10 || !/^\d+$/.test(idNum)) {
+        // للبيانات القديمة: تحذير فقط بدون منع
+        warnings.push("رقم الهوية الحالي لا يطابق الشروط الجديدة (10 أرقام). يمكنك تعديله أو تركه كما هو.");
+      }
+    }
+    
+    // التحقق من رقم الجوال (مرن للبيانات القديمة)
+    if (form.phone && form.phone.trim() !== "") {
+      const phoneNum = form.phone.trim();
+      
+      // إذا كان التعديل على سجل موجود، نتحقق فقط إذا تم تغيير الرقم
+      const isExistingData = isEdit && client?.phone === phoneNum;
+      
+      if (!isExistingData) {
+        // للبيانات الجديدة أو المعدلة: تطبيق الشروط الصارمة
+        if (!/^\d+$/.test(phoneNum)) {
+          errors.push("رقم الجوال يجب أن يتكون من أرقام فقط");
+        } else if (!phoneNum.startsWith("05")) {
+          errors.push("رقم الجوال يجب أن يبدأ بـ 05");
+        } else if (phoneNum.length !== 10) {
+          errors.push("رقم الجوال يجب أن يكون 10 أرقام");
+        }
+      } else {
+        // للبيانات القديمة: تحقق مرن
+        const cleanedPhone = phoneNum.replace(/[^0-9]/g, '');
+        
+        if (cleanedPhone.length === 0) {
+          errors.push("رقم الجوال غير صالح");
+        } else if (!cleanedPhone.startsWith("05") && cleanedPhone.length === 10) {
+          warnings.push("رقم الجوال الحالي لا يبدأ بـ 05. الشروط الجديدة تتطلب أن يبدأ الرقم بـ 05.");
+        } else if (cleanedPhone.length !== 10 && cleanedPhone.length > 0) {
+          warnings.push(`رقم الجوال الحالي (${cleanedPhone.length} رقم) لا يطابق الشروط الجديدة (10 أرقام).`);
+        }
+      }
+    }
+    
+    // عرض التحذيرات إذا وجدت
+    if (warnings.length > 0) {
+      warnings.forEach(warning => toast.warning(warning, {
+        duration: 8000,
+        description: "هذا تحذير فقط، يمكنك الاستمرار."
+      }));
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // التحقق من صحة البيانات
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(error => toast.error(error));
+      return;
+    }
     
     const data = {
       name: form.name.trim(),

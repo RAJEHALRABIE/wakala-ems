@@ -17,8 +17,8 @@ function formatDateNumeric(date: Date | string, calendar: 'gregorian' | 'hijri')
   if (!date) return "";
   try {
     const d = typeof date === 'string' ? new Date(date) : date;
-    // تجاهل التواريخ قبل عام 2000 (مشكلة 1970)
-    if (isNaN(d.getTime()) || d.getTime() < 946684800000) return "";
+    // تجاهل التواريخ غير الصالحة فقط
+    if (isNaN(d.getTime())) return "";
     
     if (calendar === 'hijri') {
       const h = gregorianToHijri(d);
@@ -57,10 +57,10 @@ export function SmartDateInput({
   disabled = false,
   error,
   className,
-  defaultToday = true,
+  defaultToday = false,
 }: SmartDateInputProps) {
   const id = useId();
-  const [mode, setMode] = useState<"gregorian" | "hijri">("gregorian");
+  const [mode, setMode] = useState<"gregorian" | "hijri">("hijri");
   
   // Internal states for dropdowns
   const [day, setDay] = useState<string>("");
@@ -70,8 +70,8 @@ export function SmartDateInput({
   // Options
   const days = useMemo(() => Array.from({ length: 31 }, (_, i) => (i + 1).toString()), []);
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => (i + 1).toString()), []);
-  const gYears = useMemo(() => Array.from({ length: 16 }, (_, i) => (2020 + i).toString()), []);
-  const hYears = useMemo(() => Array.from({ length: 101 }, (_, i) => (1400 + i).toString()), []);
+  const gYears = useMemo(() => Array.from({ length: 56 }, (_, i) => (1970 + i).toString()), []);
+  const hYears = useMemo(() => Array.from({ length: 151 }, (_, i) => (1350 + i).toString()), []);
 
   useEffect(() => {
     if (defaultToday && !value) {
@@ -83,7 +83,7 @@ export function SmartDateInput({
   useEffect(() => {
     if (value) {
       const d = new Date(value);
-      if (!isNaN(d.getTime()) && d.getTime() >= 946684800000) {
+      if (!isNaN(d.getTime())) {
         if (mode === "gregorian") {
           setDay(d.getDate().toString());
           setMonth((d.getMonth() + 1).toString());
@@ -128,7 +128,7 @@ export function SmartDateInput({
     }
   };
 
-  const isInvalid = !value || new Date(value).getTime() < 946684800000;
+  const isInvalid = !value || isNaN(new Date(value).getTime());
   const displayValue = isInvalid ? "" : value;
 
   return (
@@ -231,9 +231,14 @@ export function DateRangeInput({
   className,
 }: DateRangeInputProps) {
   const remaining = useMemo(() => {
-    if (!endValue || new Date(endValue).getTime() < 946684800000) return null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    const end = new Date(endValue); end.setHours(0,0,0,0);
+    if (!endValue) return null;
+    const endDate = new Date(endValue);
+    if (isNaN(endDate.getTime())) return null;
+    
+    const today = new Date(); 
+    today.setHours(0,0,0,0);
+    const end = new Date(endValue); 
+    end.setHours(0,0,0,0);
     const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     let status: "safe" | "warning" | "danger" | "expired" = "safe";
     if (diffDays < 0) status = "expired";

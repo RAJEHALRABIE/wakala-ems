@@ -23,11 +23,18 @@ export default function MapViewPage() {
   const [selectedClient, setSelectedClient] = useState<number | null>(null);
 
   // Filter clients with coordinates (from database)
-  const clientsWithCoords = clients?.filter(c => 
-    c.latitude !== null && c.longitude !== null &&
-    !isNaN(parseFloat(c.latitude as string)) &&
-    !isNaN(parseFloat(c.longitude as string))
-  ) || [];
+  const clientsWithCoords = clients?.filter(c => {
+    if (!c.latitude || !c.longitude) return false;
+    
+    // Convert to numbers if they're strings
+    const lat = typeof c.latitude === 'string' ? parseFloat(c.latitude) : c.latitude;
+    const lng = typeof c.longitude === 'string' ? parseFloat(c.longitude) : c.longitude;
+    
+    // Check if valid numbers and within Saudi Arabia approximate bounds
+    return !isNaN(lat) && !isNaN(lng) && 
+           lat >= 16 && lat <= 32 &&  // Saudi Arabia latitude range
+           lng >= 34 && lng <= 56;    // Saudi Arabia longitude range
+  }) || [];
   
   // Filter clients with location info
   const clientsWithLocation = clients?.filter(c => c.city || c.district) || [];
@@ -41,15 +48,20 @@ export default function MapViewPage() {
   }, {} as Record<string, typeof clients>);
 
   // تحويل العملاء إلى علامات على الخريطة
-  const markers: MapMarker[] = clientsWithCoords.map(client => ({
-    id: client.id,
-    latitude: parseFloat(client.latitude as string),
-    longitude: parseFloat(client.longitude as string),
-    title: client.name,
-    description: client.city || client.district || client.refCode || undefined,
-    status: STATUS_LABELS[client.status],
-    onClick: () => setSelectedClient(client.id),
-  }));
+  const markers: MapMarker[] = clientsWithCoords.map(client => {
+    const lat = typeof client.latitude === 'string' ? parseFloat(client.latitude) : client.latitude;
+    const lng = typeof client.longitude === 'string' ? parseFloat(client.longitude) : client.longitude;
+    
+    return {
+      id: client.id,
+      latitude: lat,
+      longitude: lng,
+      title: client.name,
+      description: client.city || client.district || client.refCode || undefined,
+      status: STATUS_LABELS[client.status],
+      onClick: () => setSelectedClient(client.id),
+    };
+  });
 
   const handleMarkerClick = (marker: MapMarker) => {
     setSelectedClient(marker.id as number);
@@ -323,17 +335,24 @@ export default function MapViewPage() {
       )}
 
       {/* Empty State */}
-      {clientsWithCoords.length === 0 && Object.keys(byLocation).length === 0 && (
+      {clientsWithCoords.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">لا توجد مواقع مسجلة</h3>
             <p className="text-muted-foreground mb-4">
-              أضف روابط خرائط جوجل للعملاء لعرضها هنا
+              {clients && clients.length > 0 
+                ? `لديك ${clients.length} عميل ولكن لا توجد إحداثيات مسجلة. أضف إحداثيات للعملاء لعرضهم على الخريطة.`
+                : "أضف روابط خرائط جوجل أو إحداثيات للعملاء لعرضها هنا"}
             </p>
-            <Link href="/clients/new">
-              <Button>إضافة عميل جديد</Button>
-            </Link>
+            <div className="flex gap-2 justify-center">
+              <Link href="/clients">
+                <Button variant="outline">عرض قائمة العملاء</Button>
+              </Link>
+              <Link href="/clients/new">
+                <Button>إضافة عميل جديد</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -303,13 +303,9 @@ export const getDeletedClients = () => {
 };
 
 export const getClientById = async (id: number) => {
-  try {
-    const result = await libsqlClient.execute({
-      sql: `SELECT *, id, created_at as createdAt, updated_at as updatedAt, deleted_at as deletedAt FROM clients WHERE id = ?`,
-      args: [id]
-    });
-    return result.rows[0] || null;
-  } catch (error) { throw error; }
+  return db.query.clients.findFirst({
+    where: eq(schema.clients.id, id)
+  });
 };
 
 export const getClientWithAgent = async (id: number) => {
@@ -358,11 +354,49 @@ export const permanentDeleteClient = (id: number) =>
 // DASHBOARD & OTHERS
 // =================================================================
 export const getDashboardStats = async () => {
+  // إجمالي عدد العملاء
   const totalClients = await db.select({ count: sql<number>`count(*)` }).from(schema.clients).where(sql`deleted_at IS NULL`);
+  
+  // توزيع الحالات
   const statusDistribution = await db.select({ status: schema.clients.status, count: sql<number>`count(*)` }).from(schema.clients).where(sql`deleted_at IS NULL`).groupBy(schema.clients.status);
   const byStatus: Record<string, number> = {};
   statusDistribution.forEach(({ status, count }) => { if (status) byStatus[status] = count; });
-  return { total: totalClients[0].count, byStatus };
+  
+  // إجمالي المساحة (مجموع area_sqm)
+  const totalAreaResult = await db.select({ totalArea: sql<number>`COALESCE(SUM(area_sqm), 0)` }).from(schema.clients).where(sql`deleted_at IS NULL`);
+  const totalArea = totalAreaResult[0]?.totalArea || 0;
+  
+  // إجمالي التعويضات المتوقعة (مجموع expected_compensation_total أو حسابها من area_sqm * expected_compensation_per_sqm)
+  const totalCompensationResult = await db.select({ 
+    totalCompensation: sql<number>`COALESCE(SUM(
+      CASE 
+        WHEN expected_compensation_total IS NOT NULL AND expected_compensation_total > 0 
+        THEN expected_compensation_total 
+        ELSE area_sqm * expected_compensation_per_sqm 
+      END
+    ), 0)` 
+  }).from(schema.clients).where(sql`deleted_at IS NULL`);
+  const totalCompensation = totalCompensationResult[0]?.totalCompensation || 0;
+  
+  // إجمالي الاتعاب المقدرة (مجموع success_fee أو حسابها من إجمالي التعويضات * نسبة الأتعاب)
+  const totalFeesResult = await db.select({ 
+    totalFees: sql<number>`COALESCE(SUM(
+      CASE 
+        WHEN success_fee IS NOT NULL AND success_fee > 0 
+        THEN success_fee 
+        ELSE (area_sqm * expected_compensation_per_sqm) * (base_fee_percentage / 100.0)
+      END
+    ), 0)` 
+  }).from(schema.clients).where(sql`deleted_at IS NULL`);
+  const totalFees = totalFeesResult[0]?.totalFees || 0;
+  
+  return { 
+    total: totalClients[0].count, 
+    byStatus,
+    totalArea,
+    totalCompensation,
+    totalFees
+  };
 };
 
 export const getAllSettings = () => db.query.settings.findMany();
@@ -375,7 +409,8 @@ export const setSetting = (key: string, value: string) => db.insert(schema.setti
 // =================================================================
 // CLIENT DOCUMENTS
 // =================================================================
-export const getClientDocuments = (clientId: number) => db.query.clientDocuments.findMany({ where: eq(schema.clientDocuments.clientId, clientId), orderBy: [desc(schema.clientDocuments.createdAt)], with: { documentType: true } });
+export const getClientDocuments = (clientId: number) => db.query.clientDocuments.findMany({ where: eq(schema.clientDocuments.clientId, clientId), orderBy: [desc(schema.clientDocuments.createdAt)] });
+export const getClientDocument = (id: number) => db.query.clientDocuments.findFirst({ where: eq(schema.clientDocuments.id, id) });
 
 export const getClientDocumentByType = async (clientId: number, documentTypeId: number) => {
   return db.query.clientDocuments.findFirst({
@@ -383,9 +418,6 @@ export const getClientDocumentByType = async (clientId: number, documentTypeId: 
       eq(schema.clientDocuments.clientId, clientId),
       eq(schema.clientDocuments.documentTypeId, documentTypeId)
     ),
-    with: {
-      documentType: true
-    }
   });
 };
 

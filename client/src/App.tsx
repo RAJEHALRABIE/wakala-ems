@@ -116,10 +116,9 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        {/* Temporarily removed TooltipProvider to debug React error */}
+        <Toaster />
+        <Router />
       </ThemeProvider>
     </ErrorBoundary>
   );
