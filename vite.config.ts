@@ -17,9 +17,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'F8'E HC'D) EMS',
+        name: 'Wakala EMS System',
         short_name: 'Wakala EMS',
-        description: 'F8'E %/'1) HC'D'* 'D*9HJ6'* 'D9B'1J)',
+        description: 'Real Estate Compensation Agency Management System',
         theme_color: '#1e40af',
         background_color: '#ffffff',
         display: 'standalone',
