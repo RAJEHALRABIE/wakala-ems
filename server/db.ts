@@ -460,6 +460,42 @@ export const deleteSession = (id: string) => db.delete(schema.sessions).where(eq
 export const upsertUser = (data: any) => db.insert(schema.systemUsers).values(data).onConflictDoUpdate({ target: schema.systemUsers.username, set: data });
 
 // =================================================================
+// WEBAUTHN CREDENTIALS
+// =================================================================
+export const getWebAuthnCredentialById = (credentialId: string) =>
+  db.query.webauthnCredentials.findFirst({ where: eq(schema.webauthnCredentials.id, credentialId) });
+
+export const getWebAuthnCredentialsByUserId = (userId: number) =>
+  db.query.webauthnCredentials.findMany({ 
+    where: eq(schema.webauthnCredentials.userId, userId),
+    orderBy: [desc(schema.webauthnCredentials.createdAt)]
+  });
+
+export const createWebAuthnCredential = (data: any) =>
+  db.insert(schema.webauthnCredentials).values(data);
+
+export const updateWebAuthnCredential = (credentialId: string, data: any) =>
+  db.update(schema.webauthnCredentials).set(data).where(eq(schema.webauthnCredentials.id, credentialId));
+
+export const deleteWebAuthnCredential = (credentialId: string) =>
+  db.delete(schema.webauthnCredentials).where(eq(schema.webauthnCredentials.id, credentialId));
+
+// =================================================================
+// WEBAUTHN CHALLENGES
+// =================================================================
+export const createWebAuthnChallenge = (data: any) =>
+  db.insert(schema.webauthnChallenges).values(data);
+
+export const getWebAuthnChallenge = (challengeId: string) =>
+  db.query.webauthnChallenges.findFirst({ where: eq(schema.webauthnChallenges.id, challengeId) });
+
+export const deleteWebAuthnChallenge = (challengeId: string) =>
+  db.delete(schema.webauthnChallenges).where(eq(schema.webauthnChallenges.id, challengeId));
+
+export const cleanupExpiredChallenges = () =>
+  db.delete(schema.webauthnChallenges).where(sql`${schema.webauthnChallenges.expiresAt} < CURRENT_TIMESTAMP`);
+
+// =================================================================
 // SEED DEFAULT ADMIN
 // =================================================================
 export async function seedDefaultAdmin() {

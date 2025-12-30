@@ -5,11 +5,10 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 export default {
-  schema: "./drizzle/schema.ts",
+  schema: "./drizzle/schema.sqlite.ts",
   out: "./drizzle/migrations",
-  dialect: "mysql",
+  dialect: "sqlite",
   dbCredentials: {
-    // التغيير الحاسم: استخدام المتغير البيئي بدلاً من الثوابت
-    url: process.env.DATABASE_URL!,
+    url: "file:./wakala-ems.db",
   },
 } satisfies Config;

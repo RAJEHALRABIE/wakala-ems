@@ -6,6 +6,7 @@ import { PasswordChangeDialog } from "./components/settings/PasswordChangeDialog
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AppLayout from "./components/AppLayout";
+import InstallPrompt from "./components/InstallPrompt";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState } from "react";
 
@@ -119,6 +120,7 @@ function App() {
         {/* Temporarily removed TooltipProvider to debug React error */}
         <Toaster />
         <Router />
+        <InstallPrompt />
       </ThemeProvider>
     </ErrorBoundary>
   );

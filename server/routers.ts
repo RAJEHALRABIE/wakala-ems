@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./routers/system.router";
 import { systemUsersRouter } from "./routers/systemUsers.router";
 import { clientDocumentsRouter } from "./routers/clientDocuments.router";
+import { webauthnRouter } from "./routers/webauthn.router";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
@@ -51,6 +52,7 @@ const propertyDocTypeEnum = z.enum(["Deed", "Ihkam", "Revivals", "Other"]);
 export const appRouter = router({
   system: systemRouter,
   systemUsers: systemUsersRouter,
+  webauthn: webauthnRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

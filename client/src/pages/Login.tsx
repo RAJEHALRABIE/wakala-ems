@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Lock, User, AlertCircle } from "lucide-react";
+import { Lock, User, AlertCircle, Fingerprint } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import WebAuthnButton from "@/components/WebAuthnButton";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -40,6 +41,15 @@ export default function Login() {
       return;
     }
     loginMutation.mutate({ username, password });
+  };
+
+  const handleWebAuthnSuccess = (token: string, user: any) => {
+    localStorage.setItem('auth_token', token);
+    queryClient.invalidateQueries();
+    toast.success("تم تسجيل الدخول بالبصمة بنجاح");
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 100);
   };
 
   return (
@@ -103,6 +113,27 @@ export default function Login() {
             >
               {loginMutation.isPending ? "جاري التحقق..." : "دخول النظام"}
             </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-slate-500">أو</span>
+              </div>
+            </div>
+
+            <WebAuthnButton
+              username={username}
+              onSuccess={handleWebAuthnSuccess}
+              variant="login"
+              className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+            />
+
+            <div className="text-xs text-center text-slate-500 mt-4">
+              <Fingerprint className="inline-block h-3 w-3 mr-1" />
+              استخدم بصمة الإصبع أو Face ID لتسجيل الدخول بشكل أسرع وأكثر أماناً
+            </div>
           </form>
         </CardContent>
       </Card>

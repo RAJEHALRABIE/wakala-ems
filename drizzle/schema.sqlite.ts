@@ -116,3 +116,36 @@ export const sessions = sqliteTable('sessions', {
 
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = typeof sessions.$inferInsert;
+
+/**
+ * WebAuthn Credentials table
+ */
+export const webauthnCredentials = sqliteTable('webauthn_credentials', {
+  id: text('id').primaryKey(), // credential ID
+  userId: integer('user_id').notNull().references(() => systemUsers.id, { onDelete: 'cascade' }),
+  publicKey: text('public_key').notNull(), // Base64 encoded public key
+  counter: integer('counter').notNull().default(0),
+  deviceType: text('device_type'), // 'platform' or 'cross-platform'
+  backedUp: integer('backed_up', { mode: 'boolean' }).default(false),
+  transports: text('transports'), // JSON array of transport methods
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+});
+
+export type WebAuthnCredential = typeof webauthnCredentials.$inferSelect;
+export type InsertWebAuthnCredential = typeof webauthnCredentials.$inferInsert;
+
+/**
+ * WebAuthn Challenges table (temporary)
+ */
+export const webauthnChallenges = sqliteTable('webauthn_challenges', {
+  id: text('id').primaryKey(), // challenge ID
+  userId: integer('user_id').notNull().references(() => systemUsers.id, { onDelete: 'cascade' }),
+  challenge: text('challenge').notNull(), // Base64 encoded challenge
+  type: text('type').notNull(), // 'registration' or 'authentication'
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type WebAuthnChallenge = typeof webauthnChallenges.$inferSelect;
+export type InsertWebAuthnChallenge = typeof webauthnChallenges.$inferInsert;
