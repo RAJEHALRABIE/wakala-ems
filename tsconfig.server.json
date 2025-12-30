@@ -14,7 +14,8 @@
     "skipLibCheck": true,
     "declaration": false,
     "sourceMap": false,
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": false
   },
   "include": [
     "server/**/*"
