@@ -117,10 +117,11 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        {/* Temporarily removed TooltipProvider to debug React error */}
-        <Toaster />
-        <Router />
-        <InstallPrompt />
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+          <InstallPrompt />
+        </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
