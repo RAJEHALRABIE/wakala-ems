@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient as createLibSQLClient } from "@libsql/client";
 import { eq, desc, like, sql, inArray, and } from "drizzle-orm";
 import { schema } from "../drizzle/schema-with-relations";
-import type { InsertAgent, InsertClient, InsertDocument, InsertUser, ClientStatus } from "../drizzle/schema.sqlite";
+import type { InsertAgent, InsertClient, InsertDocument, ClientStatus } from "../drizzle/schema-with-relations";
 import type { InsertClientDocument, InsertClientActivityLog, InsertClientNote } from "../drizzle/schema-with-relations";
 import { createId } from "@paralleldrive/cuid2";
 import { logger } from "./logger";

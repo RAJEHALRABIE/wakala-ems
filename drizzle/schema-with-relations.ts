@@ -363,6 +363,35 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }));
 
+// WebAuthn Credentials table
+export const webauthnCredentials = sqliteTable('webauthn_credentials', {
+  id: text('id').primaryKey(),
+    userId: integer('user_id').notNull(),
+      publicKey: text('public_key').notNull(),
+        counter: integer('counter').notNull().default(0),
+          deviceType: text('device_type'),
+            backedUp: integer('backed_up', { mode: 'boolean' }).default(false),
+              transports: text('transports'),
+                createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+                  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+                  });
+
+                  export type WebAuthnCredential = typeof webauthnCredentials.$inferSelect;
+                  export type InsertWebAuthnCredential = typeof webauthnCredentials.$inferInsert;
+
+                  // WebAuthn Challenges table
+                  export const webauthnChallenges = sqliteTable('webauthn_challenges', {
+                    id: text('id').primaryKey(),
+                      userId: integer('user_id').notNull(),
+                        challenge: text('challenge').notNull(),
+                          type: text('type').notNull(),
+                            expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+                              createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+                              });
+
+                              export type WebAuthnChallenge = typeof webauthnChallenges.$inferSelect;
+                              export type InsertWebAuthnChallenge = typeof webauthnChallenges.$inferInsert;
+
 // Export schema with relations for Drizzle
 export const schema = {
   systemUsers,
@@ -375,6 +404,8 @@ export const schema = {
   clientActivityLog,
   clientNotes,
   sessions,
+  webauthnCredentials,
+  webauthnChallenges,
   // Relations
   agentsRelations,
   clientsRelations,

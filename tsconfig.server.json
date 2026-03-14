@@ -1,17 +1,25 @@
 {
-  "compilerOptions": {
-    "outDir": "dist/server",
-    "module": "ESNext",
-    "target": "ES2022",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "noEmit": false,
-    "skipLibCheck": true,
-    "strict": false,
-    "types": ["node"]
-  },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+    "compilerOptions": {
+        "outDir": "dist/server",
+            "module": "ESNext",
+                "target": "ES2022",
+                    "moduleResolution": "bundler",
+                        "esModuleInterop": true,
+                            "allowSyntheticDefaultImports": true,
+                                "resolveJsonModule": true,
+                                    "noEmit": false,
+                                        "skipLibCheck": true,
+                                            "strict": false,
+                                                "jsx": "preserve",
+                                                    "types": ["node"],
+                                                        "baseUrl": ".",
+                                                            "paths": {
+                                                                  "@shared/*": ["./shared/*"],
+                                                                        "@/*": ["./client/src/*"]
+                                                                            }
+                                                                              },
+                                                                                "include": ["server/**/*.ts", "shared/**/*.ts", "drizzle/**/*.ts"],
+                                                                                  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "client/**/*"]
+                                                                                  }
+                                                                                  
 }
